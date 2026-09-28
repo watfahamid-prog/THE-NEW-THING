@@ -41,15 +41,17 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
     scene_paths=[]; scene_meta=[]
     history=load_persistent_history()
     persistent_video_ids=set(history.get("video_ids", []))
+    persistent_hashes=set(history.get("sha256", []))
     used_video_ids=set()
-    print(f"[pipeline] persistent Pexels history: {len(persistent_video_ids)} clips blocked")
+    used_hashes=set()
+    print(f"[pipeline] persistent Pexels history: {len(persistent_video_ids)} IDs + {len(persistent_hashes)} hashes blocked")
     for index,scene in enumerate(storyboard["scenes"],1):
         scene=dict(scene)
         scene["duration"]=round(per_scene,3)
         scene["aspect"]="landscape" if storyboard.get("format") in ("longform","tierlist") else "vertical"
         path=scenes_dir/f"scene_{index:02d}.mp4"
         print(f"[pipeline] rendering scene {index}/{len(storyboard['scenes'])}: {scene.get('purpose','')} ({scene['duration']}s)")
-        meta=generate_scene(scene["prompt"],path,topic=topic,scene=scene,index=index,duration=scene["duration"],used_video_ids=used_video_ids,blocked_video_ids=persistent_video_ids)
+        meta=generate_scene(scene["prompt"],path,topic=topic,scene=scene,index=index,duration=scene["duration"],used_video_ids=used_video_ids,blocked_video_ids=persistent_video_ids,used_hashes=used_hashes,blocked_hashes=persistent_hashes)
         scene_paths.append(path)
         scene_meta.append({**scene,**meta})
 
@@ -90,6 +92,7 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
 
     history["video_ids"] = sorted(set(history.get("video_ids", [])) | set(used_video_ids))
     history["video_urls"] = sorted(set(history.get("video_urls", [])) | {str(s.get("pexels_url")) for s in scene_meta if s.get("pexels_url")})
+    history["sha256"] = sorted(set(history.get("sha256", [])) | set(used_hashes))
     save_persistent_history(history)
     print(f"[pipeline] persisted {len(used_video_ids)} new Pexels clips; history now has {len(history['video_ids'])}")
 
