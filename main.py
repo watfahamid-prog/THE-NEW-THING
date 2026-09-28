@@ -2,6 +2,7 @@ import argparse,json,sys,time,uuid
 from config import OUTPUT_DIR,validate
 from storyboard import create_storyboard
 from ai_video import generate_scene
+from pexels_visuals import load_persistent_history, save_persistent_history
 from audio import make_voiceover
 from captions import make_srt,burn_captions,duration as media_duration
 from render import concat_scenes,add_voice,apply_ranking_overlay,apply_tier_overlay,apply_advanced_edit,final_master,validate as validate_video
@@ -38,14 +39,17 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
         per_scene=visual_duration/max(len(storyboard["scenes"]),1)
 
     scene_paths=[]; scene_meta=[]
+    history=load_persistent_history()
+    persistent_video_ids=set(history.get("video_ids", []))
     used_video_ids=set()
+    print(f"[pipeline] persistent Pexels history: {len(persistent_video_ids)} clips blocked")
     for index,scene in enumerate(storyboard["scenes"],1):
         scene=dict(scene)
         scene["duration"]=round(per_scene,3)
         scene["aspect"]="landscape" if storyboard.get("format") in ("longform","tierlist") else "vertical"
         path=scenes_dir/f"scene_{index:02d}.mp4"
         print(f"[pipeline] rendering scene {index}/{len(storyboard['scenes'])}: {scene.get('purpose','')} ({scene['duration']}s)")
-        meta=generate_scene(scene["prompt"],path,topic=topic,scene=scene,index=index,duration=scene["duration"],used_video_ids=used_video_ids)
+        meta=generate_scene(scene["prompt"],path,topic=topic,scene=scene,index=index,duration=scene["duration"],used_video_ids=used_video_ids,blocked_video_ids=persistent_video_ids)
         scene_paths.append(path)
         scene_meta.append({**scene,**meta})
 
@@ -83,6 +87,11 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
     expected=(1920,1080) if storyboard.get("format") in ("longform","tierlist") else (1080,1920)
     if (qc["width"],qc["height"])!=expected:
         raise RuntimeError(f"Final video failed {expected[0]}x{expected[1]} QC: "+str(qc))
+
+    history["video_ids"] = sorted(set(history.get("video_ids", [])) | set(used_video_ids))
+    history["video_urls"] = sorted(set(history.get("video_urls", [])) | {str(s.get("pexels_url")) for s in scene_meta if s.get("pexels_url")})
+    save_persistent_history(history)
+    print(f"[pipeline] persisted {len(used_video_ids)} new Pexels clips; history now has {len(history['video_ids'])}")
 
     manifest={
         "run_id":run_id,
