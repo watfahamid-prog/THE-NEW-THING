@@ -3,6 +3,8 @@ import subprocess
 from pathlib import Path
 import requests
 import json
+import hashlib
+import random
 
 HISTORY_PATH = Path("data/pexels_history.json")
 
@@ -65,10 +67,10 @@ def _download(url: str, path: Path):
 
 def load_persistent_history() -> dict:
     if not HISTORY_PATH.exists():
-        return {"video_ids": [], "video_urls": []}
+        return {"video_ids": [], "video_urls": [], "sha256": []}
     try:
         data = json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
-        return {"video_ids": [str(x) for x in data.get("video_ids", [])], "video_urls": [str(x) for x in data.get("video_urls", [])]}
+        return {"video_ids": [str(x) for x in data.get("video_ids", [])], "video_urls": [str(x) for x in data.get("video_urls", [])], "sha256": [str(x) for x in data.get("sha256", [])]}
     except Exception:
         return {"video_ids": [], "video_urls": []}
 
@@ -77,13 +79,16 @@ def save_persistent_history(history: dict) -> None:
     HISTORY_PATH.write_text(json.dumps({
         "video_ids": sorted(set(map(str, history.get("video_ids", [])))),
         "video_urls": sorted(set(map(str, history.get("video_urls", [])))),
+        "sha256": sorted(set(map(str, history.get("sha256", [])))),
     }, indent=2), encoding="utf-8")
 
-def make_scene(topic: str, scene: dict, index: int, output: Path, duration: float | None = None, used_video_ids: set | None = None, blocked_video_ids: set | None = None) -> dict:
+def make_scene(topic: str, scene: dict, index: int, output: Path, duration: float | None = None, used_video_ids: set | None = None, blocked_video_ids: set | None = None, used_hashes: set | None = None, blocked_hashes: set | None = None):
     if not PEXELS_API_KEY:
         raise RuntimeError("PEXELS_API_KEY is missing. Add your Pexels API key to GitHub Actions secrets.")
     used_video_ids = used_video_ids if used_video_ids is not None else set()
     blocked_video_ids = blocked_video_ids if blocked_video_ids is not None else set()
+    used_hashes = used_hashes if used_hashes is not None else set()
+    blocked_hashes = blocked_hashes if blocked_hashes is not None else set()
 
     query = _query(topic, scene)
     headers = {"Authorization": PEXELS_API_KEY}
@@ -110,30 +115,51 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
     if not videos:
         raise RuntimeError(f"No Pexels video found for query: {query}")
 
-    # Never reuse the same Pexels source video inside one generated video.
-    # The old index-based selection wrapped around when a query returned fewer
-    # candidates than the number of scenes, causing identical clips.
-    unused = [v for v in videos if str(v.get("id", "")) not in used_video_ids and str(v.get("id", "")) not in blocked_video_ids]
-    if not unused:
-        raise RuntimeError(
-            f"No unused Pexels video remains for scene {index}. "
-            f"Found {len(videos)} candidates, but all were already used."
-        )
-    video = unused[0]
-    video_id = str(video.get("id", ""))
-    if not video_id:
-        raise RuntimeError(f"Pexels returned a video without an ID for scene {index}.")
-    used_video_ids.add(video_id)
+    # Never reuse a Pexels source video inside this video OR across previous
+    # runs. Hashing the downloaded MP4 catches the same file even if its URL
+    # changes; Pexels IDs remain a second layer of protection.
+    candidates = [v for v in videos if str(v.get("id", "")) not in used_video_ids and str(v.get("id", "")) not in blocked_video_ids]
+    random.shuffle(candidates)
+    if not candidates:
+        raise RuntimeError(f"No unused Pexels video remains for scene {index}.")
 
-    files = [x for x in video.get("video_files", []) if x.get("file_type") == "video/mp4" and x.get("link")]
     target_ratio=target_w/max(target_h,1)
-    files.sort(key=lambda x: (abs((x.get("height", 0) / max(x.get("width", 1), 1)) - target_ratio), -(x.get("width", 0))))
-    if not files:
-        raise RuntimeError(f"Pexels returned no downloadable MP4 for video {video.get('id')}")
-
     output.parent.mkdir(parents=True, exist_ok=True)
     source = output.with_suffix(".source.mp4")
-    _download(files[0]["link"], source)
+    video = None
+    source_sha256 = None
+
+    for candidate in candidates:
+        files = [x for x in candidate.get("video_files", []) if x.get("file_type") == "video/mp4" and x.get("link")]
+        files.sort(key=lambda x: (abs((x.get("height", 0) / max(x.get("width", 1), 1)) - target_ratio), -(x.get("width", 0))))
+        if not files:
+            continue
+        candidate_id = str(candidate.get("id", ""))
+        _download(files[0]["link"], source)
+
+        digest = hashlib.sha256()
+        with source.open("rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                digest.update(chunk)
+        candidate_hash = digest.hexdigest()
+
+        if candidate_hash in blocked_hashes or candidate_hash in used_hashes:
+            print(f"[pexels] rejected duplicate: id={candidate_id} sha256={candidate_hash[:12]}")
+            source.unlink(missing_ok=True)
+            continue
+
+        video = candidate
+        source_sha256 = candidate_hash
+        used_video_ids.add(candidate_id)
+        used_hashes.add(candidate_hash)
+        print(f"[pexels] selected new clip: id={candidate_id} sha256={candidate_hash[:12]}")
+        break
+
+    if video is None:
+        raise RuntimeError(f"All {len(candidates)} Pexels candidates were already used by ID or SHA-256.")
+
+    video_id = str(video.get("id", ""))
+
     target_duration = float(duration or scene.get("duration") or VIDEO_SCENE_SECONDS)
     vf = (
         "setpts=PTS-STARTPTS,"
@@ -159,6 +185,7 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
         "index": index,
         "pexels_video_id": video.get("id"),
         "pexels_url": video.get("url"),
+        "pexels_sha256": source_sha256,
         "search_query": query,
         "credit": "Footage provided by Pexels"
     }
