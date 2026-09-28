@@ -1,0 +1,61 @@
+name: Sample Videos
+
+on:
+  push:
+    paths:
+      - ".github/workflows/sample.yml"
+  workflow_dispatch:
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: sample-1
+            topic: "Top 5 Most Insane Parkour Moments"
+          - id: sample-2
+            topic: "Top 5 Craziest Football Skills"
+          - id: sample-3
+            topic: "Top 5 Most Satisfying Things to Watch"
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: FFmpeg + TTS runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak-ng
+          ffmpeg -version
+          ffprobe -version
+
+      - name: Verify subtitle support
+        run: |
+          ffmpeg -hide_banner -filters | grep -E '(^|[[:space:]])ass([[:space:]]|$)'
+
+      - name: Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate sample
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: python main.py --topic "${{ matrix.topic }}"
+
+      - name: Upload sample
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.id }}
+          path: output/**/final.mp4
+          if-no-files-found: error
+          retention-days: 7
