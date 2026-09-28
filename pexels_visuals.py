@@ -2,6 +2,9 @@ import re
 import subprocess
 from pathlib import Path
 import requests
+import json
+
+HISTORY_PATH = Path("data/pexels_history.json")
 
 from config import PEXELS_API_KEY, VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_SCENE_SECONDS
 
@@ -60,10 +63,27 @@ def _download(url: str, path: Path):
                 time.sleep(2 * (attempt + 1))
     raise RuntimeError(f"Failed to download Pexels video after 5 attempts: {last_error}")
 
-def make_scene(topic: str, scene: dict, index: int, output: Path, duration: float | None = None, used_video_ids: set | None = None) -> dict:
+def load_persistent_history() -> dict:
+    if not HISTORY_PATH.exists():
+        return {"video_ids": [], "video_urls": []}
+    try:
+        data = json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
+        return {"video_ids": [str(x) for x in data.get("video_ids", [])], "video_urls": [str(x) for x in data.get("video_urls", [])]}
+    except Exception:
+        return {"video_ids": [], "video_urls": []}
+
+def save_persistent_history(history: dict) -> None:
+    HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    HISTORY_PATH.write_text(json.dumps({
+        "video_ids": sorted(set(map(str, history.get("video_ids", [])))),
+        "video_urls": sorted(set(map(str, history.get("video_urls", [])))),
+    }, indent=2), encoding="utf-8")
+
+def make_scene(topic: str, scene: dict, index: int, output: Path, duration: float | None = None, used_video_ids: set | None = None, blocked_video_ids: set | None = None) -> dict:
     if not PEXELS_API_KEY:
         raise RuntimeError("PEXELS_API_KEY is missing. Add your Pexels API key to GitHub Actions secrets.")
     used_video_ids = used_video_ids if used_video_ids is not None else set()
+    blocked_video_ids = blocked_video_ids if blocked_video_ids is not None else set()
 
     query = _query(topic, scene)
     headers = {"Authorization": PEXELS_API_KEY}
@@ -93,7 +113,7 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
     # Never reuse the same Pexels source video inside one generated video.
     # The old index-based selection wrapped around when a query returned fewer
     # candidates than the number of scenes, causing identical clips.
-    unused = [v for v in videos if str(v.get("id", "")) not in used_video_ids]
+    unused = [v for v in videos if str(v.get("id", "")) not in used_video_ids and str(v.get("id", "")) not in blocked_video_ids]
     if not unused:
         raise RuntimeError(
             f"No unused Pexels video remains for scene {index}. "
