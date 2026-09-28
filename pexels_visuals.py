@@ -72,7 +72,7 @@ def load_persistent_history() -> dict:
         data = json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
         return {"video_ids": [str(x) for x in data.get("video_ids", [])], "video_urls": [str(x) for x in data.get("video_urls", [])], "sha256": [str(x) for x in data.get("sha256", [])]}
     except Exception:
-        return {"video_ids": [], "video_urls": []}
+        return {"video_ids": [], "video_urls": [], "sha256": []}
 
 def save_persistent_history(history: dict) -> None:
     HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
