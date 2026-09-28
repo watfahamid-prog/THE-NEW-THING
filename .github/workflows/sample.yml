@@ -1,4 +1,5 @@
 name: Sample Videos
+# Hash-based Pexels duplicate protection enabled
 
 on:
   push:
