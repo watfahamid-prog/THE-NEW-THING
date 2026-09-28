@@ -38,13 +38,14 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
         per_scene=visual_duration/max(len(storyboard["scenes"]),1)
 
     scene_paths=[]; scene_meta=[]
+    used_video_ids=set()
     for index,scene in enumerate(storyboard["scenes"],1):
         scene=dict(scene)
         scene["duration"]=round(per_scene,3)
         scene["aspect"]="landscape" if storyboard.get("format") in ("longform","tierlist") else "vertical"
         path=scenes_dir/f"scene_{index:02d}.mp4"
         print(f"[pipeline] rendering scene {index}/{len(storyboard['scenes'])}: {scene.get('purpose','')} ({scene['duration']}s)")
-        meta=generate_scene(scene["prompt"],path,topic=topic,scene=scene,index=index,duration=scene["duration"])
+        meta=generate_scene(scene["prompt"],path,topic=topic,scene=scene,index=index,duration=scene["duration"],used_video_ids=used_video_ids)
         scene_paths.append(path)
         scene_meta.append({**scene,**meta})
 
