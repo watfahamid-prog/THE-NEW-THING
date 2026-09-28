@@ -60,9 +60,10 @@ def _download(url: str, path: Path):
                 time.sleep(2 * (attempt + 1))
     raise RuntimeError(f"Failed to download Pexels video after 5 attempts: {last_error}")
 
-def make_scene(topic: str, scene: dict, index: int, output: Path, duration: float | None = None) -> dict:
+def make_scene(topic: str, scene: dict, index: int, output: Path, duration: float | None = None, used_video_ids: set | None = None) -> dict:
     if not PEXELS_API_KEY:
         raise RuntimeError("PEXELS_API_KEY is missing. Add your Pexels API key to GitHub Actions secrets.")
+    used_video_ids = used_video_ids if used_video_ids is not None else set()
 
     query = _query(topic, scene)
     headers = {"Authorization": PEXELS_API_KEY}
@@ -70,7 +71,7 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
     target_w = 1920 if landscape else VIDEO_WIDTH
     target_h = 1080 if landscape else VIDEO_HEIGHT
     orientation = "landscape" if landscape else "portrait"
-    params = {"query": query, "orientation": orientation, "size": "medium", "per_page": 15}
+    params = {"query": query, "orientation": orientation, "size": "medium", "per_page": 80}
     r = requests.get(API, headers=headers, params=params, timeout=30)
     if r.status_code >= 500:
         videos = []
@@ -89,7 +90,21 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
     if not videos:
         raise RuntimeError(f"No Pexels video found for query: {query}")
 
-    video = videos[(index - 1) % len(videos)]
+    # Never reuse the same Pexels source video inside one generated video.
+    # The old index-based selection wrapped around when a query returned fewer
+    # candidates than the number of scenes, causing identical clips.
+    unused = [v for v in videos if str(v.get("id", "")) not in used_video_ids]
+    if not unused:
+        raise RuntimeError(
+            f"No unused Pexels video remains for scene {index}. "
+            f"Found {len(videos)} candidates, but all were already used."
+        )
+    video = unused[0]
+    video_id = str(video.get("id", ""))
+    if not video_id:
+        raise RuntimeError(f"Pexels returned a video without an ID for scene {index}.")
+    used_video_ids.add(video_id)
+
     files = [x for x in video.get("video_files", []) if x.get("file_type") == "video/mp4" and x.get("link")]
     target_ratio=target_w/max(target_h,1)
     files.sort(key=lambda x: (abs((x.get("height", 0) / max(x.get("width", 1), 1)) - target_ratio), -(x.get("width", 0))))
