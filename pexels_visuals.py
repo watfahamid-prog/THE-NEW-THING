@@ -13,6 +13,16 @@ from config import PEXELS_API_KEY, VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_SCENE_SECOND
 API = "https://api.pexels.com/v1/videos/search"
 
 def _query(topic: str, scene: dict) -> str:
+    # Gemini can provide short, concrete stock-footage searches for each scene.
+    # Prefer those over the prose prompt; this prevents generic words such as
+    # "realistic vertical stock video" from becoming the search query.
+    explicit = scene.get("visual_search_queries") or scene.get("search_queries") or []
+    if isinstance(explicit, str):
+        explicit = [explicit]
+    for item in explicit:
+        q = re.sub(r"\\s+", " ", str(item)).strip()
+        if len(q) >= 3:
+            return q[:120]
     topic_l = topic.lower()
     # Ranking topics need footage of the actual subject, not generic stock
     # clips. Parkour/freerunning gets a deliberately concrete search.
@@ -119,7 +129,25 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
     # runs. Hashing the downloaded MP4 catches the same file even if its URL
     # changes; Pexels IDs remain a second layer of protection.
     candidates = [v for v in videos if str(v.get("id", "")) not in used_video_ids and str(v.get("id", "")) not in blocked_video_ids]
-    random.shuffle(candidates)
+
+    # Pexels already ranks search results for relevance. Do not destroy that
+    # ranking with a blind shuffle. Prefer candidates whose Pexels URL slug
+    # also contains concrete query terms, then add a small amount of
+    # randomness among the strongest matches for variety.
+    query_terms = [x for x in re.findall(r"[a-z0-9]+", query.lower()) if len(x) > 2]
+    generic = {"video","stock","footage","people","person","man","woman","action","scene","realistic","vertical","landscape","portrait","clip"}
+    core_terms = [x for x in query_terms if x not in generic]
+
+    def relevance(video):
+        slug = re.sub(r"[^a-z0-9]+", " ", str(video.get("url","")).lower())
+        overlap = sum(1 for term in core_terms if term in slug.split())
+        partial = sum(1 for term in core_terms if term in slug)
+        return (overlap * 3 + partial, -int(video.get("duration", 0) or 0))
+
+    candidates.sort(key=relevance, reverse=True)
+    shortlist = candidates[:min(12, len(candidates))]
+    random.shuffle(shortlist)
+    candidates = shortlist + candidates[len(shortlist):]
     if not candidates:
         raise RuntimeError(f"No unused Pexels video remains for scene {index}.")
 
@@ -187,5 +215,6 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
         "pexels_url": video.get("url"),
         "pexels_sha256": source_sha256,
         "search_query": query,
+        "search_terms": core_terms,
         "credit": "Footage provided by Pexels"
     }
