@@ -1,0 +1,60 @@
+name: Combined Autopilot Test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "topic_engine.py"
+      - "autopilot.py"
+      - ".github/workflows/combined-autopilot-test.yml"
+
+jobs:
+  autopilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: FFmpeg + TTS runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak-ng
+      - name: Dependencies
+        run: pip install -r requirements.txt
+      - name: Generate one combined autopilot video
+        env:
+          GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}
+          PEXELS_API_KEY: \${{ secrets.PEXELS_API_KEY }}
+          YOUTUBE_API_KEY: \${{ secrets.YOUTUBE_API_KEY }}
+          TREND_REGION: US
+          TREND_LOOKBACK_HOURS: 24
+        run: |
+          test -n "$GEMINI_API_KEY" || { echo "GEMINI_API_KEY secret is missing"; exit 1; }
+          test -n "$PEXELS_API_KEY" || { echo "PEXELS_API_KEY secret is missing"; exit 1; }
+          test -n "$YOUTUBE_API_KEY" || { echo "YOUTUBE_API_KEY secret is missing"; exit 1; }
+          python main.py --autopilot
+      - name: Commit topic history and Pexels history
+        run: |
+          if git diff --quiet -- data/topic_history.json data/pexels_history.json; then
+            echo "No history changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/topic_history.json data/pexels_history.json
+          git commit -m "Persist autonomous topic and clip history"
+          git push
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-autopilot-test
+          path: |
+            output/**/final.mp4
+            output/**/manifest.json
+            output/trends-*.json
+          if-no-files-found: error
+          retention-days: 7
