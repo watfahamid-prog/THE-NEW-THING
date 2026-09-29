@@ -128,5 +128,4 @@ def choose_topic(trends: list[dict]) -> tuple[dict,list[dict]]:
     # Prefer a mix of categories and a topic with strong upstream trend support.
     # Gemini supplies originality; YouTube supplies the trend signal.
     selected=candidates[0]
-    save_history([selected["topic"]])
     return selected,candidates
