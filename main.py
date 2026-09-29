@@ -15,6 +15,19 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
 
     storyboard=create_storyboard(topic,hook_override,longform=longform)
     if hook_override: storyboard["hook"]=hook_override
+
+    # Carry Gemini's topic-level visual searches into the renderer. These are
+    # much more concrete than the prose narration prompt.
+    topic_queries=[]
+    if isinstance(selected_trend,dict):
+        topic_queries=selected_trend.get("visual_search_queries") or []
+    if isinstance(topic_queries,str):
+        topic_queries=[topic_queries]
+    topic_queries=[str(q).strip() for q in topic_queries if str(q).strip()][:5]
+    for scene_index,scene in enumerate(storyboard.get("scenes",[]),1):
+        scene["scene_index"]=scene_index
+        if topic_queries:
+            scene["visual_search_queries"]=topic_queries
     storyboard["hook_variants"]=hook_variants or [storyboard.get("hook","")]
     (root/"storyboard.json").write_text(json.dumps(storyboard,indent=2),encoding="utf-8")
     print(f"[pipeline] storyboard ready: {storyboard.get('format')} / {len(storyboard['scenes'])} scenes")
