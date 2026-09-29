@@ -80,7 +80,7 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
     srt=root/"captions.srt"
     make_srt(narration_text,voice,srt)
     captioned=root/"captioned.mp4"
-    burn_captions(voiced,srt,captioned)
+    burn_captions(visual_master,srt,captioned)
 
     final=root/"final.mp4"
     final_master(captioned,final)
