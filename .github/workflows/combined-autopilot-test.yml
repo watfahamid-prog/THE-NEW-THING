@@ -10,6 +10,8 @@ on:
       - "main.py"
       - "render.py"
       - "captions.py"
+      - "pexels_visuals.py"
+      - "storyboard.py"
       - ".github/workflows/combined-autopilot-test.yml"
 
 jobs:
