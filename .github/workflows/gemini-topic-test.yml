@@ -18,52 +18,72 @@ jobs:
           python-version: "3.12"
       - name: Install requests
         run: python -m pip install requests
-      - name: Test Gemini topic ideation and storyboard creation
+      - name: Verify YouTube secret and API
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          YOUTUBE_API_KEY: \${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          test -n "$YOUTUBE_API_KEY" || { echo "YOUTUBE_API_KEY secret is missing"; exit 1; }
+          python - <<'PY'
+          import os, requests
+          r=requests.get(
+            "https://www.googleapis.com/youtube/v3/videos",
+            params={"part":"snippet,statistics","chart":"mostPopular","regionCode":"US","maxResults":10,"key":os.environ["YOUTUBE_API_KEY"]},
+            timeout=30,
+          )
+          if r.status_code != 200:
+              print("YouTube API response:", r.text[:1000])
+              r.raise_for_status()
+          items=r.json().get("items",[])
+          if not items:
+              raise SystemExit("YouTube API returned no videos")
+          print("YOUTUBE_API_OK", len(items))
+          for item in items:
+              print(item["snippet"]["title"])
+          PY
+      - name: Test Gemini topic ideation from YouTube signals
+        env:
+          GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: \${{ vars.GEMINI_MODEL }}
+          YOUTUBE_API_KEY: \${{ secrets.YOUTUBE_API_KEY }}
         run: |
           python - <<'PY'
           import json, os, requests
-          key = os.environ.get("GEMINI_API_KEY", "")
-          model = os.environ.get("GEMINI_MODEL") or "gemini-3.5-flash-lite"
+          key=os.environ.get("GEMINI_API_KEY","")
           if not key:
               raise SystemExit("GEMINI_API_KEY secret is missing")
-          url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-          headers = {"x-goog-api-key": key, "Content-Type": "application/json"}
-          topic_prompt = """Generate 20 original YouTube video topics for a fast, entertaining ranking/compilation channel.
-Mix categories: funny cats and dogs, animals, fails, sports, crazy moments, satisfying processes,
-unusual skills, surprising everyday moments, machines, food, nature, and internet-style curiosities.
-Do NOT copy existing titles. Topics must be concrete enough that real stock video footage can be found.
-Avoid politics, tragedy, violence, copyrighted characters, and celebrity dependence.
-Return JSON only with:
-{"topics":[{"title":string,"category":string,"why_clickable":string,"visual_search_queries":[string,string,string]}]}
-Exactly 20 topics."""
-          storyboard_prompt = """Topic: 5 Funniest Cat Moments That Could Actually Happen
-Create an original short vertical ranking video concept.
-Return JSON only:
-{"title":string,"hook":string,"entries":[{"rank":integer,"name":string,"visual_search_queries":[string,string,string]}],"scenes":[{"rank":integer,"purpose":string,"prompt":string}]}
-Exactly 5 entries and 5 scenes. Every visual prompt must describe concrete moving real-world video footage.
-Make every scene visually distinct and actually related to its rank."""
-          def call(prompt):
-              r = requests.post(url, headers=headers, json={"contents":[{"parts":[{"text":prompt}]}],
-                  "generationConfig":{"temperature":0.95,"responseMimeType":"application/json"}}, timeout=90)
-              r.raise_for_status()
-              return json.loads(r.json()["candidates"][0]["content"]["parts"][0]["text"])
-          topics = call(topic_prompt)
-          storyboard = call(storyboard_prompt)
-          if len(topics.get("topics", [])) != 20:
-              raise SystemExit(f"Topic count failed: {len(topics.get('topics', []))}")
-          if len(storyboard.get("entries", [])) != 5 or len(storyboard.get("scenes", [])) != 5:
-              raise SystemExit("Storyboard structure failed")
-          out = {"model": model, "topic_test": topics, "storyboard_test": storyboard}
-          with open("gemini_topic_test.json", "w", encoding="utf-8") as f:
-              json.dump(out, f, indent=2, ensure_ascii=False)
-          print(json.dumps(out, indent=2, ensure_ascii=False))
+          yt=requests.get(
+            "https://www.googleapis.com/youtube/v3/videos",
+            params={"part":"snippet,statistics","chart":"mostPopular","regionCode":"US","maxResults":15,"key":os.environ["YOUTUBE_API_KEY"]},
+            timeout=30,
+          )
+          yt.raise_for_status()
+          titles=[x["snippet"]["title"] for x in yt.json().get("items",[])]
+          model=os.environ.get("GEMINI_MODEL") or "gemini-3.5-flash-lite"
+          prompt="""Generate 12 ORIGINAL YouTube topics from these current YouTube titles as trend signals.
+Do not copy wording, creators, characters, or titles. Mix funny cats/dogs, animals, fails, sports,
+satisfying processes, machines, food, nature, unusual skills and surprising moments.
+Every topic must be concrete enough to find real stock video footage and include 3 visual search queries.
+Return JSON only: {"topics":[{"title":string,"category":string,"reason":string,"visual_search_queries":[string,string,string]}]}
+Current trend signals:
+""" + "\n".join("- "+x for x in titles)
+          url=f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+          r=requests.post(url,headers={"x-goog-api-key":key,"Content-Type":"application/json"},
+            json={"contents":[{"parts":[{"text":prompt}]}],
+                  "generationConfig":{"temperature":0.95,"responseMimeType":"application/json"}},timeout=90)
+          r.raise_for_status()
+          data=json.loads(r.json()["candidates"][0]["content"]["parts"][0]["text"])
+          topics=data.get("topics",[])
+          if len(topics)<10:
+              raise SystemExit(f"Gemini returned too few topics: {len(topics)}")
+          for i,t in enumerate(topics,1):
+              print(f"{i}. {t.get('title')} [{t.get('category')}]")
+              print("   searches:", ", ".join(t.get("visual_search_queries",[])))
+          with open("youtube_gemini_result.json","w",encoding="utf-8") as f:
+              json.dump({"youtube_titles":titles,"gemini_topics":topics,"model":model},f,indent=2,ensure_ascii=False)
           PY
-      - name: Upload Gemini results
+      - name: Upload results
         uses: actions/upload-artifact@v4
         with:
-          name: gemini-topic-test
-          path: gemini_topic_test.json
+          name: youtube-gemini-test
+          path: youtube_gemini_result.json
 # trigger test run
