@@ -35,6 +35,8 @@ def run():
         hook_override=hook["selected"],
         hook_variants=hook["variants"],
     )
+    from topic_engine import save_history
+    save_history([selected["topic"]])
     return result
 
 if __name__=="__main__":
