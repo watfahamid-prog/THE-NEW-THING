@@ -19,10 +19,11 @@ def _query(topic: str, scene: dict) -> str:
     explicit = scene.get("visual_search_queries") or scene.get("search_queries") or []
     if isinstance(explicit, str):
         explicit = [explicit]
-    for item in explicit:
-        q = re.sub(r"\\s+", " ", str(item)).strip()
-        if len(q) >= 3:
-            return q[:120]
+    if explicit:
+        usable=[re.sub(r"\\s+", " ", str(x)).strip() for x in explicit if str(x).strip()]
+        if usable:
+            scene_index=int(scene.get("scene_index",1) or 1)
+            return usable[(scene_index-1) % len(usable)][:120]
     topic_l = topic.lower()
     # Ranking topics need footage of the actual subject, not generic stock
     # clips. Parkour/freerunning gets a deliberately concrete search.
@@ -45,6 +46,9 @@ def _query(topic: str, scene: dict) -> str:
     words = re.findall(r"[A-Za-z0-9]+", prompt.lower())
     stop = {"vertical","cinematic","scene","visualize","visual","realistic","motion","dynamic","premium","lighting","style","about","show","with","the","and","for","from","this","that","no","logos","text","footage","stock","video"}
     useful = [w for w in words if w not in stop and len(w) > 2]
+    # A concrete topic is safer than boilerplate prompt words.
+    if topic.strip():
+        return re.sub(r"\\s+", " ", topic).strip()[:120]
     base = " ".join(useful[:7])
     return base or "luxury mansion architecture"
 
