@@ -7,6 +7,9 @@ on:
       - "topic_engine.py"
       - "autopilot.py"
       - "trend_discovery.py"
+      - "main.py"
+      - "render.py"
+      - "captions.py"
       - ".github/workflows/combined-autopilot-test.yml"
 
 jobs:
