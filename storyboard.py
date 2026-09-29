@@ -219,6 +219,7 @@ For every video:
 - For ranking videos, write ONLY a strong hook in the hook field; do not create a script.
 - Every scene must describe a distinct moving VIDEO event.
 - Every scene prompt must work as a real Pexels stock VIDEO search query.
+- Every scene must also include visual_search_queries: exactly 3 short, concrete Pexels search phrases focused on the actual subject/action (for example, "cup stacking competition", "speed cup stacking", "stacking cups hands").
 - Never request still images or static graphics.
 - Keep the visuals tightly connected to what is being said.
 Return JSON keys: title, hook, script, format, ranking_entries, scenes."""
@@ -240,7 +241,13 @@ Return JSON keys: title, hook, script, format, ranking_entries, scenes."""
                 continue
             purpose=str(scene.get("purpose") or scene.get("title") or f"Scene {i}")
             prompt_text=scene.get("prompt") or scene.get("visual_prompt") or scene.get("description") or purpose
-            normalized.append({**scene,"purpose":purpose,"prompt":str(prompt_text),"duration":int(scene.get("duration",5) or 5)})
+            queries=scene.get("visual_search_queries") or scene.get("search_queries") or []
+            if isinstance(queries,str):
+                queries=[queries]
+            queries=[str(q).strip() for q in queries if str(q).strip()][:3]
+            if len(queries)<3:
+                queries=(queries+[purpose,topic,topic+" action"])[:3]
+            normalized.append({**scene,"purpose":purpose,"prompt":str(prompt_text),"visual_search_queries":queries,"duration":int(scene.get("duration",5) or 5)})
         if ranking:
             entries=result.get("ranking_entries") or []
             clean=[]
@@ -261,6 +268,13 @@ Return JSON keys: title, hook, script, format, ranking_entries, scenes."""
                 entry=next(x for x in clean if x["rank"]==rank)
                 s["rank"]=rank
                 s["name"]=entry["name"]
+                queries=s.get("visual_search_queries") or s.get("search_queries") or []
+                if isinstance(queries,str):
+                    queries=[queries]
+                queries=[str(q).strip() for q in queries if str(q).strip()][:3]
+                if len(queries)<3:
+                    queries=(queries+[entry["name"],topic,entry["name"]+" action"])[:3]
+                s["visual_search_queries"]=queries
                 ordered.append(s)
             result["scenes"]=ordered
             result["ranking_entries"]=clean
