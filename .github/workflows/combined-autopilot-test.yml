@@ -6,6 +6,7 @@ on:
     paths:
       - "topic_engine.py"
       - "autopilot.py"
+      - "trend_discovery.py"
       - ".github/workflows/combined-autopilot-test.yml"
 
 jobs:
