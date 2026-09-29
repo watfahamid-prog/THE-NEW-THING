@@ -37,17 +37,27 @@ jobs:
           test -n "$PEXELS_API_KEY" || { echo "PEXELS_API_KEY secret is missing"; exit 1; }
           test -n "$YOUTUBE_API_KEY" || { echo "YOUTUBE_API_KEY secret is missing"; exit 1; }
           python main.py --autopilot
-      - name: Commit topic history and Pexels history
+      - name: Save failure details
+        if: failure()
         run: |
-          if git diff --quiet -- data/topic_history.json data/pexels_history.json; then
-            echo "No history changes."
+          if [ -f autopilot.log ]; then
+            mkdir -p data
+            cp autopilot.log data/last_autopilot_error.txt
+            echo "Captured autopilot failure log."
+          fi
+      - name: Commit histories and failure details
+        if: always()
+        run: |
+          if git diff --quiet -- data/topic_history.json data/pexels_history.json data/last_autopilot_error.txt 2>/dev/null; then
+            echo "No files to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/topic_history.json data/pexels_history.json
-          git commit -m "Persist autonomous topic and clip history"
-          git push
+          git add data/topic_history.json data/pexels_history.txt data/pexels_history.json data/last_autopilot_error.txt 2>/dev/null || true
+          git add data/topic_history.json data/pexels_history.json data/last_autopilot_error.txt 2>/dev/null || true
+          git commit -m "Persist autopilot history and diagnostics" || true
+          git push || true
       - name: Upload result and failure log
         if: always()
         uses: actions/upload-artifact@v4
