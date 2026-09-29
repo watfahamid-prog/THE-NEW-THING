@@ -194,10 +194,18 @@ def apply_advanced_edit(video: Path, storyboard: dict, output: Path):
     n=max(len(scenes),1)
     # Subtle continuous zoom plus vignette. Scene cuts are already produced by
     # concat_scenes; this pass adds a more deliberate, polished visual finish.
+    probe=subprocess.check_output([
+        "ffprobe","-v","error","-select_streams","v:0",
+        "-show_entries","stream=width,height","-of","csv=s=x:p=0",str(video)
+    ],text=True).strip()
+    try:
+        width,height=(int(x) for x in probe.split("x",1))
+    except (ValueError,TypeError):
+        width,height=1920,1080
     vf=(
         "scale=iw*1.045:ih*1.045,"
         "crop=iw/1.045:ih/1.045,"
-        "zoompan=z='min(zoom+0.0009,1.045)':d=1:s=1920x1080:fps=30,"
+        f"zoompan=z='min(zoom+0.0009,1.045)':d=1:s={width}x{height}:fps=30,"
         "eq=contrast=1.045:saturation=1.08:brightness=0.006,"
         "vignette=PI/5"
     )
