@@ -1,0 +1,83 @@
+name: Gemini Topic Test
+
+on:
+  push:
+    paths:
+      - ".github/workflows/gemini-topic-test.yml"
+  workflow_dispatch:
+
+jobs:
+  test-gemini:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install requests
+        run: python -m pip install requests
+      - name: Test Gemini topic ideation and storyboard creation
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+        run: |
+          python - <<'PY'
+          import json, os, requests
+
+          key = os.environ.get("GEMINI_API_KEY", "")
+          model = os.environ.get("GEMINI_MODEL") or "gemini-3.5-flash-lite"
+          if not key:
+              raise SystemExit("GEMINI_API_KEY secret is missing")
+
+          url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+          headers = {"x-goog-api-key": key, "Content-Type": "application/json"}
+
+          topic_prompt = """
+          Generate 20 original YouTube video topics for a fast, entertaining ranking/compilation channel.
+          Mix categories: funny cats and dogs, animals, fails, sports, crazy moments, satisfying processes,
+          unusual skills, surprising everyday moments, machines, food, nature, and internet-style curiosities.
+          Do NOT copy existing titles. Topics must be concrete enough that real stock video footage can be found.
+          Avoid politics, tragedy, violence, copyrighted characters, and celebrity dependence.
+          Return JSON only with:
+          {"topics":[{"title":string,"category":string,"why_clickable":string,"visual_search_queries":[string,string,string]}]}
+          Exactly 20 topics.
+          """
+
+          storyboard_prompt = """
+          Topic: 5 Funniest Cat Moments That Could Actually Happen
+          Create an original short vertical ranking video concept.
+          Return JSON only:
+          {"title":string,"hook":string,"entries":[{"rank":integer,"name":string,"visual_search_queries":[string,string,string]}],"scenes":[{"rank":integer,"purpose":string,"prompt":string}]}
+          Exactly 5 entries and 5 scenes. Every visual prompt must describe concrete moving real-world video footage.
+          Make every scene visually distinct and actually related to its rank.
+          """
+
+          def call(prompt):
+              r = requests.post(url, headers=headers, json={
+                  "contents":[{"parts":[{"text":prompt}]}],
+                  "generationConfig":{"temperature":0.95,"responseMimeType":"application/json"}
+              }, timeout=90)
+              r.raise_for_status()
+              return json.loads(r.json()["candidates"][0]["content"]["parts"][0]["text"])
+
+          topics = call(topic_prompt)
+          storyboard = call(storyboard_prompt)
+
+          if len(topics.get("topics", [])) != 20:
+              raise SystemExit(f"Topic count failed: {len(topics.get('topics', []))}")
+          if len(storyboard.get("entries", [])) != 5 or len(storyboard.get("scenes", [])) != 5:
+              raise SystemExit("Storyboard structure failed")
+
+          out = {"model": model, "topic_test": topics, "storyboard_test": storyboard}
+          with open("gemini_topic_test.json", "w", encoding="utf-8") as f:
+              json.dump(out, f, indent=2, ensure_ascii=False)
+
+          print(json.dumps(out, indent=2, ensure_ascii=False))
+          PY
+      - name: Upload Gemini results
+        uses: actions/upload-artifact@v4
+        with:
+          name: gemini-topic-test
+          path: gemini_topic_test.json
