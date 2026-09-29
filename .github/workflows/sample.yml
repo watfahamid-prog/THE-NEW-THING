@@ -2,9 +2,6 @@ name: Sample Videos
 # Hash-based Pexels duplicate protection enabled
 
 on:
-  push:
-    paths:
-      - ".github/workflows/sample.yml"
   workflow_dispatch:
 
 jobs:
@@ -15,12 +12,13 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+          cache: pip
 
       - name: FFmpeg + TTS runtime
         run: |
@@ -43,20 +41,23 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           set -e
-          python main.py --topic "Top 5 Most Insane Parkour Moments"
-          python main.py --topic "Top 5 Craziest Football Skills"
-          python main.py --topic "Top 5 Most Satisfying Things to Watch"
+          test -n "$GEMINI_API_KEY"
+          test -n "$PEXELS_API_KEY"
+          test -n "$YOUTUBE_API_KEY"
+          python main.py --autopilot
+          python main.py --autopilot
+          python main.py --autopilot
 
-      - name: Commit persistent Pexels history
+      - name: Commit persistent topic and Pexels history
         run: |
-          if git diff --quiet -- data/pexels_history.json; then
-            echo "No Pexels history changes to commit."
+          if git diff --quiet -- data/pexels_history.json data/topic_history.json; then
+            echo "No topic or Pexels history changes to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/pexels_history.json
-          git commit -m "Persist used Pexels clip history"
+          git add data/pexels_history.json data/topic_history.json
+          git commit -m "Persist autonomous topic and Pexels history"
           git push
 
       - name: Upload samples
