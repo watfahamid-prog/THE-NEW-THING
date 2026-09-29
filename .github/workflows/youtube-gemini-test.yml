@@ -1,0 +1,91 @@
+name: YouTube + Gemini Integration Test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/youtube-gemini-test.yml"
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Verify API secrets without exposing them
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          test -n "$YOUTUBE_API_KEY" || { echo "YOUTUBE_API_KEY secret is missing"; exit 1; }
+          test -n "$GEMINI_API_KEY" || { echo "GEMINI_API_KEY secret is missing"; exit 1; }
+          echo "Both API secrets are present."
+      - name: Test YouTube API
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          python - <<'PY'
+          import os, requests
+          r=requests.get(
+            "https://www.googleapis.com/youtube/v3/videos",
+            params={"part":"snippet,statistics","chart":"mostPopular","regionCode":"US","maxResults":5,"key":os.environ["YOUTUBE_API_KEY"]},
+            timeout=30,
+          )
+          r.raise_for_status()
+          items=r.json().get("items",[])
+          if not items:
+              raise SystemExit("YouTube API returned no videos")
+          print("YouTube API OK:", len(items), "videos returned")
+          for x in items:
+              print("-", x["snippet"]["title"])
+          PY
+      - name: Test combined YouTube -> Gemini
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+        run: |
+          python - <<'PY'
+          import json, os, requests
+          yt=requests.get(
+            "https://www.googleapis.com/youtube/v3/videos",
+            params={"part":"snippet,statistics","chart":"mostPopular","regionCode":"US","maxResults":10,"key":os.environ["YOUTUBE_API_KEY"]},
+            timeout=30,
+          )
+          yt.raise_for_status()
+          items=yt.json().get("items",[])
+          titles=[x["snippet"]["title"] for x in items]
+          model=os.environ.get("GEMINI_MODEL") or "gemini-3.5-flash-lite"
+          prompt="""You are the topic editor for an original entertainment YouTube channel.
+Analyze these currently popular YouTube titles as trend signals, NOT as scripts to copy.
+Generate 10 original video topics inspired by the broad patterns. Mix funny animals, fails,
+sports, satisfying processes, surprising moments, unusual skills and other visually searchable ideas.
+Do not copy titles, creators, characters, or wording. Every topic must have at least 3 concrete stock-video search queries.
+Return JSON only: {"topics":[{"title":string,"reason":string,"visual_search_queries":[string,string,string]}]}
+Titles:
+""" + "\n".join("- "+t for t in titles)
+          r=requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+            headers={"x-goog-api-key":os.environ["GEMINI_API_KEY"],"Content-Type":"application/json"},
+            json={"contents":[{"parts":[{"text":prompt}]}],"generationConfig":{"temperature":0.9,"responseMimeType":"application/json"}},
+            timeout=90,
+          )
+          r.raise_for_status()
+          data=json.loads(r.json()["candidates"][0]["content"]["parts"][0]["text"])
+          topics=data.get("topics",[])
+          if len(topics)<8:
+              raise SystemExit(f"Gemini returned too few topics: {len(topics)}")
+          print(json.dumps({"youtube_titles":titles,"gemini_topics":topics},indent=2,ensure_ascii=False))
+          with open("integration_test.json","w",encoding="utf-8") as f:
+              json.dump({"youtube_titles":titles,"gemini_topics":topics},f,indent=2,ensure_ascii=False)
+          PY
+      - name: Upload integration result
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-gemini-integration
+          path: integration_test.json
