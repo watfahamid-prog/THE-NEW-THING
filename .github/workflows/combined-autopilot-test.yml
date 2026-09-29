@@ -48,7 +48,8 @@ jobs:
           git add data/topic_history.json data/pexels_history.json
           git commit -m "Persist autonomous topic and clip history"
           git push
-      - name: Upload result
+      - name: Upload result and failure log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: combined-autopilot-test
@@ -56,5 +57,6 @@ jobs:
             output/**/final.mp4
             output/**/manifest.json
             output/trends-*.json
-          if-no-files-found: error
+            autopilot.log
+          if-no-files-found: warn
           retention-days: 7
