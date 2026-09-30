@@ -9,7 +9,7 @@ Every scene must use VIDEO FOOTAGE ONLY. Never request still images, image slide
 For stock-footage scenes, every visual prompt must describe a concrete subject and moving action that can be searched as a real stock VIDEO clip on Pexels.
 Avoid copyrighted characters, logos and watermarks.
 For ranking videos, create a persistent leaderboard: ranks are displayed visually from 1 at the top to 5 at the bottom, but the actual clips play from 5 to 1. All five entries remain visible for the entire video; only the active row is highlighted.
-The ranking should feel like an actual editorial ranking with distinct named entries, not generic labels.
+The ranking should feel like an actual editorial ranking with distinct named entries that describe the ACTUAL subject/moment being ranked, not generic labels. Every ranking scene must use footage that matches the topic and the scene's search query. Never substitute a stock category such as parkour, sports, cars, or people unless that category is actually the topic.
 Return only valid JSON."""
 
 def is_tier_topic(topic: str) -> bool:
@@ -33,25 +33,47 @@ def fallback(topic: str, hook_override: str | None = None) -> dict[str, Any]:
             "The Perfect Run",
         ]
         rank_entries=[{"rank":i,"name":names[5-i]} for i in range(1,6)]
-        rank_to_prompt={
-            5:"a simple but impressive parkour movement with a clean landing",
-            4:"a fast parkour run with a more difficult obstacle",
-            3:"a technical parkour sequence with a risky-looking but controlled jump",
-            2:"an extremely difficult parkour gap with a dramatic landing",
-            1:"an extraordinary parkour sequence with a spectacular clean finish"
-        }
+        # Never hard-code a different activity into a ranking fallback.
+        # The fallback must stay faithful to the actual topic.
+        t=topic.lower()
+        if "dog" in t:
+            queries=["funny dog reaction","dog surprised reaction","dog funny fail","dog playing funny","dog running funny"]
+            names=["The Warm-Up Reaction","The Surprise Face","The Funny Fail","The Perfect Reaction","The Best One"]
+            reactions=["It starts innocent, then that reaction gives it away.","That face changed so fast, you can’t fake that.","The timing here is way too perfect.","You can actually see the confusion hit in real time.","Okay, that one absolutely earned the top spot."]
+        elif "cat" in t:
+            queries=["funny cat reaction","cat surprised reaction","cat funny fail","cat jumping funny","cat curious reaction"]
+            names=["The Side-Eye","The Surprise","The Failed Jump","The Instant Regret","The Perfect Reaction"]
+            reactions=["That cat saw the situation and immediately reconsidered.","The face says everything before anything even happens.","That jump had a very different ending in mind.","The confidence disappeared in about one second.","That reaction is impossible to beat."]
+        elif "animal" in t or "animals" in t:
+            queries=["funny animal reaction","animal surprised reaction","animal funny fail","animal playing funny","animal unexpected behavior"]
+            names=["The Surprise","The Reaction","The Fail","The Perfect Timing","The Wildest Moment"]
+            reactions=["That reaction came completely out of nowhere.","The expression makes the whole moment.","That did not go remotely as planned.","The timing makes this one ridiculously watchable.","That is exactly the kind of moment you remember."]
+        elif any(x in t for x in ("football","soccer","basketball","sports","sport")):
+            queries=[f"{topic} funny moment",f"{topic} surprising reaction",f"{topic} skill fail",f"{topic} unexpected moment",f"{topic} best moment"]
+            names=["The Funny Moment","The Reaction","The Fail","The Surprise","The Best Moment"]
+            reactions=["The timing on that is absolutely ridiculous.","That reaction tells the whole story.","You can see the mistake coming way too late.","That moment changed direction instantly.","That is exactly why this one stands out."]
+        else:
+            base=re.sub(r"\s+"," ",topic).strip()
+            queries=[f"{base} funny moment",f"{base} surprising reaction",f"{base} unexpected moment",f"{base} caught on camera",f"{base} best moment"]
+            names=["The Opening Moment","The Reaction","The Unexpected Turn","The Big Moment","The Standout"]
+            reactions=["The opening looks normal, then everything changes.","That reaction is what makes this moment work.","The unexpected turn is what you remember.","You can see the whole moment develop in seconds.","That one has the strongest payoff."]
+        rank_entries=[{"rank":i,"name":names[5-i]} for i in range(1,6)]
         scenes=[]
-        for playback_rank in range(5,0,-1):
+        for pos,playback_rank in enumerate(range(5,0,-1)):
             entry=next(x for x in rank_entries if x["rank"]==playback_rank)
+            q=queries[pos]
+            reaction=reactions[pos]
             scenes.append({
                 "duration":5,
                 "purpose":f"rank {playback_rank}",
                 "rank":playback_rank,
                 "name":entry["name"],
                 "camera":"dynamic handheld tracking",
-                "prompt":f"Realistic vertical stock VIDEO footage of {rank_to_prompt[playback_rank]}, continuous visible motion, athletic movement, clear beginning and landing, no text, no logos."
+                "prompt":f"Realistic vertical stock VIDEO footage of {q}; clear continuous subject motion, natural environment, no text, no logos.",
+                "visual_search_queries":[q],
+                "commentary":reaction,
             })
-        script=""
+        script=hook+" "+" ".join(reactions)
         return {"title":topic,"hook":hook,"script":script,"format":"ranking","ranking_count":5,
                 "ranking_entries":rank_entries,"scenes":scenes}
 
@@ -253,13 +275,14 @@ If ranking format:
 - Scenes must be returned in playback order: 5, 4, 3, 2, 1.
 - Give each entry a short, interesting name that actually describes what is being ranked.
 - Make the #1 entry the strongest payoff.
-- Do NOT write a narration script for ranking videos.
-- The hook is the ONLY spoken narration; make it short, punchy, and curiosity-driven.
+- Ranking videos MUST include short spoken creator reactions for every ranked entry in addition to the hook.
+- Never say "number 1", "number 2", etc. in the spoken reactions. The on-screen leaderboard already communicates the rank.
+- Reactions should be energetic, specific to the visible subject/action, and different from each other.
 - Never ask the stock-video search for text, number badges, UI, logos, or graphics; the renderer adds the leaderboard.
 
 For every video:
 - For non-ranking videos, write 90-130 words of natural spoken narration.
-- For ranking videos, write ONLY a strong hook in the hook field; do not create a script.
+- For ranking videos, write a hook plus a short reaction for each ranked scene. Put the complete spoken narration in script, in playback order 5 -> 1, with the hook first.
 - Every scene must describe a distinct moving VIDEO event.
 - Every scene prompt must work as a real Pexels stock VIDEO search query.
 - Every scene must also include visual_search_queries: exactly 3 short, concrete Pexels search phrases focused on the actual subject/action (for example, "cup stacking competition", "speed cup stacking", "stacking cups hands").
