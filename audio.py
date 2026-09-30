@@ -67,6 +67,9 @@ def _kokoro(text: str, output_path: Path):
     print("[tts] Kokoro fallback")
 
 def make_voiceover(text: str, output_path: Path):
+    global LAST_VOICE_PROVIDER, LAST_VOICE_ID
+    LAST_VOICE_PROVIDER="none"
+    LAST_VOICE_ID=""
     output_path.parent.mkdir(parents=True,exist_ok=True)
     if ELEVENLABS_API_KEY:
         try:
@@ -76,3 +79,4 @@ def make_voiceover(text: str, output_path: Path):
             print(f"[tts] ElevenLabs failed; falling back to Kokoro: {exc}")
     _kokoro(text,output_path)
     LAST_VOICE_PROVIDER="kokoro_local"
+    LAST_VOICE_ID="af_heart"
