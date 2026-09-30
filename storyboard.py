@@ -9,7 +9,7 @@ Create original, high-retention vertical video concepts designed to be genuinely
 Every scene must use VIDEO FOOTAGE ONLY. Never request still images, image slideshows, screenshots, illustrations, photo montages, or static graphics as the visual.
 For stock-footage scenes, every visual prompt must describe a concrete subject and moving action that can be searched as a real stock VIDEO clip on Pexels.
 Avoid copyrighted characters, logos and watermarks.
-For ranking videos, create a persistent leaderboard: ranks are displayed visually from 1 at the top to 5 at the bottom, but the actual clips play from 5 to 1. All five entries remain visible for the entire video; only the active row is highlighted.
+For ranking videos, create a persistent leaderboard: ranks are displayed visually from 1 at the top to N at the bottom, where N is the requested Top N count (5-10). The actual clips play from N down to 1. All N entries remain visible for the entire video; only the active row is highlighted.
 The ranking should feel like an actual editorial ranking with distinct named entries that describe the ACTUAL subject/moment being ranked, not generic labels. Every ranking scene must use footage that matches the topic and the scene's search query. Never substitute a stock category such as parkour, sports, cars, or people unless that category is actually the topic.
 Return only valid JSON."""
 
@@ -269,6 +269,8 @@ def create_storyboard(topic: str, hook_override: str | None = None, longform: bo
     if not GEMINI_API_KEY:
         return fallback(topic, hook_override)
     ranking=is_ranking_topic(topic)
+    m=re.search(r"\\btop\\s*(\\d+)\\b", topic.lower())
+    count=max(5,min(int(m.group(1)),10)) if m else 5
     prompt=f"""Topic: {topic}
 Preferred hook: {hook_override or "create the strongest curiosity hook yourself"}
 Create a short vertical video. Format: {"ranking" if ranking else "explainer"}.
@@ -278,9 +280,9 @@ If ranking format:
 - Return ranking_entries with exactly {count} objects containing rank and name.
 - The leaderboard order is ALWAYS 1 through {count} from top to bottom.
 - Playback order is ALWAYS {count} down to 1.
-- All five rows stay visible for the entire video.
+- All {count} rows stay visible for the entire video.
 - Each scene must contain rank and name matching its entry.
-- Scenes must be returned in playback order: 5, 4, 3, 2, 1.
+- Scenes must be returned in playback order: {count}, {count}-1, ... , 2, 1.
 - Give each entry a short, interesting name that actually describes what is being ranked.
 - Make the #1 entry the strongest payoff.
 - Ranking videos MUST include short spoken creator reactions for every ranked entry in addition to the hook.
@@ -290,7 +292,7 @@ If ranking format:
 
 For every video:
 - For non-ranking videos, write 90-130 words of natural spoken narration.
-- For ranking videos, write a hook plus a short reaction for each ranked scene. Put the complete spoken narration in script, in playback order 5 -> 1, with the hook first.
+- For ranking videos, write a hook plus a short reaction for each ranked scene. Put the complete spoken narration in script, in playback order {count} -> 1, with the hook first.
 - Every scene must describe a distinct moving VIDEO event.
 - Every scene prompt must work as a real Pexels stock VIDEO search query.
 - Every scene must also include visual_search_queries: exactly 3 short, concrete Pexels search phrases focused on the actual subject/action (for example, "cup stacking competition", "speed cup stacking", "stacking cups hands").
@@ -352,6 +354,7 @@ Return JSON keys: title, hook, script, format, ranking_entries, scenes."""
                 ordered.append(s)
             result["scenes"]=ordered
             result["ranking_entries"]=clean
+            result["ranking_count"]=count
             result["format"]="ranking"
             return result
         if len(normalized)==VIDEO_SCENES:
