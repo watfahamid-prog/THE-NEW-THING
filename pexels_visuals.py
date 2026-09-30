@@ -114,15 +114,18 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
     r = requests.get(API, headers=headers, params=params, timeout=30)
     if r.status_code >= 500:
         videos = []
-        for fallback in ("luxury mansion architecture", "luxury house exterior", "modern mansion interior"):
+        # Retry the SAME semantic query. Never substitute unrelated footage.
+        for attempt in range(3):
             retry_params = dict(params)
-            retry_params["query"] = fallback
             rr = requests.get(API, headers=headers, params=retry_params, timeout=30)
             if rr.ok:
                 videos = rr.json().get("videos", [])
                 if videos:
-                    query = fallback
                     break
+            import time
+            time.sleep(2 * (attempt + 1))
+        if not videos:
+            raise RuntimeError(f"Pexels search failed for query: {query} (HTTP {r.status_code})")
     else:
         r.raise_for_status()
         videos = r.json().get("videos", [])
@@ -132,7 +135,22 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
     # Never reuse a Pexels source video inside this video OR across previous
     # runs. Hashing the downloaded MP4 catches the same file even if its URL
     # changes; Pexels IDs remain a second layer of protection.
-    candidates = [v for v in videos if str(v.get("id", "")) not in used_video_ids and str(v.get("id", "")) not in blocked_video_ids]
+    candidates = []
+    for v in videos:
+        vid=str(v.get("id",""))
+        if not vid or vid in used_video_ids or vid in blocked_video_ids:
+            continue
+        # Reject obviously weak/short results before downloading them.
+        duration=float(v.get("duration") or 0)
+        if duration < max(2.5, float(duration or 0)):
+            continue
+        files=[x for x in v.get("video_files",[]) if x.get("file_type")=="video/mp4" and x.get("link")]
+        if not files:
+            continue
+        max_dim=max(max(int(x.get("width") or 0),int(x.get("height") or 0)) for x in files)
+        if max_dim < 720:
+            continue
+        candidates.append(v)
 
     # Pexels already ranks search results for relevance. Do not destroy that
     # ranking with a blind shuffle. Prefer candidates whose Pexels URL slug
