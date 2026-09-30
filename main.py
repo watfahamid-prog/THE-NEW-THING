@@ -32,7 +32,17 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
     (root/"storyboard.json").write_text(json.dumps(storyboard,indent=2),encoding="utf-8")
     print(f"[pipeline] storyboard ready: {storyboard.get('format')} / {len(storyboard['scenes'])} scenes")
 
-    narration_text=storyboard.get("hook","") if storyboard.get("format")=="ranking" else storyboard.get("script","")
+    if storyboard.get("format")=="ranking":
+        # Ranking videos need a reaction for every visible entry, not just a
+        # cold-open hook. Prefer scene-level commentary so the fallback path
+        # remains useful even when Gemini/OpenAI are rate-limited.
+        reactions=[str(scene.get("commentary","")).strip() for scene in storyboard.get("scenes",[]) if str(scene.get("commentary","")).strip()]
+        if len(reactions)==len(storyboard.get("scenes",[])) and reactions:
+            narration_text=" ".join([str(storyboard.get("hook","")).strip()]+reactions)
+        else:
+            narration_text=str(storyboard.get("script","") or storyboard.get("hook","")).strip()
+    else:
+        narration_text=storyboard.get("script","")
     if not narration_text.strip():
         raise ValueError("No narration text available for this video.")
     voice=root/"voice.wav"
