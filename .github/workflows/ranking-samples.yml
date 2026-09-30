@@ -12,7 +12,7 @@ on:
 
 concurrency:
   group: ranking-samples
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   samples:
@@ -40,8 +40,10 @@ jobs:
 
       - name: Install FFmpeg + TTS runtime
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg espeak-ng
+          if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v espeak-ng >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng
+          fi
 
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
