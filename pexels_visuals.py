@@ -50,7 +50,7 @@ def _query(topic: str, scene: dict) -> str:
     if topic.strip():
         return re.sub(r"\\s+", " ", topic).strip()[:120]
     base = " ".join(useful[:7])
-    return base or "luxury mansion architecture"
+    return base or "funny animal moment"
 
 def _download(url: str, path: Path):
     # Pexels CDN connections can occasionally reset on GitHub-hosted runners.
