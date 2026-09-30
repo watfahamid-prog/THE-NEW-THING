@@ -44,7 +44,8 @@ def _write_ranking_ass(path: Path, title: str, entries: list[dict], per_scene: f
         "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ]
-    lines.append(f"Dialogue: 0,0:00:00.00,{_ass_time(total_duration)},Title,,0,0,0,,{_ass_escape(title or 'TOP 5')}")
+    display_title = f"TOP {len(entries)}: {title or 'MOMENTS'}"
+    lines.append(f"Dialogue: 0,0:00:00.00,{_ass_time(total_duration)},Title,,0,0,0,,{_ass_escape(display_title)}")
     for pos,entry in enumerate(entries):
         rank=int(entry.get("rank",pos+1))
         name=_ass_escape(entry.get("name") or f"Rank {rank}")
