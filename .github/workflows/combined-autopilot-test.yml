@@ -2,29 +2,17 @@ name: YouTube Production Autopilot
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "main.py"
-      - "autopilot.py"
-      - "storyboard.py"
-      - "topic_engine.py"
-      - "trend_discovery.py"
-      - "pexels_visuals.py"
-      - "ai_video.py"
-      - "audio.py"
-      - "config.py"
-      - "openai_editor.py"
-      - "render.py"
-      - ".github/workflows/combined-autopilot-test.yml"
+  schedule:
+    - cron: "0 */6 * * *"
 
 concurrency:
-  group: youtube-production
+  group: youtube-production-autopilot
   cancel-in-progress: true
 
 jobs:
   autopilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
@@ -35,27 +23,23 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
-      - name: Install FFmpeg + TTS runtime
+      - name: Install FFmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg espeak-ng
+          sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
 
-      - name: Validate required secrets
+      - name: Validate production secrets
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
         run: |
-          test -n "$GEMINI_API_KEY" || { echo "::error::GEMINI_API_KEY is missing"; exit 1; }
           test -n "$PEXELS_API_KEY" || { echo "::error::PEXELS_API_KEY is missing"; exit 1; }
-          test -n "$YOUTUBE_API_KEY" || { echo "::error::YOUTUBE_API_KEY is missing"; exit 1; }
-          test -n "$OPENAI_API_KEY" || { echo "::warning::OPENAI_API_KEY is missing; OpenAI refinement will be skipped"; }
+          test -n "$ELEVENLABS_API_KEY" || { echo "::error::ELEVENLABS_API_KEY is missing"; exit 1; }
 
-      - name: Generate one YouTube video
+      - name: Generate one ranked YouTube Short
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
