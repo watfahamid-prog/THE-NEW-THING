@@ -1,68 +1,90 @@
-name: Combined Autopilot Test
+name: YouTube Production Autopilot
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - "main.py"
+      - "autopilot.py"
+      - "storyboard.py"
+      - "topic_engine.py"
+      - "trend_discovery.py"
+      - "pexels_visuals.py"
+      - "ai_video.py"
+      - "audio.py"
+      - "config.py"
+      - ".github/workflows/combined-autopilot-test.yml"
+
+concurrency:
+  group: youtube-production
+  cancel-in-progress: true
+
 jobs:
   autopilot:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v5
+
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
-      - name: FFmpeg + TTS runtime
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install FFmpeg + TTS runtime
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg espeak-ng
-      - name: Dependencies
-        run: pip install -r requirements.txt
-      - name: Generate one combined autopilot video
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Validate required secrets
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          test -n "$GEMINI_API_KEY" || { echo "::error::GEMINI_API_KEY is missing"; exit 1; }
+          test -n "$PEXELS_API_KEY" || { echo "::error::PEXELS_API_KEY is missing"; exit 1; }
+          test -n "$YOUTUBE_API_KEY" || { echo "::error::YOUTUBE_API_KEY is missing"; exit 1; }
+
+      - name: Generate one YouTube video
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+          ELEVENLABS_MODEL: ${{ vars.ELEVENLABS_MODEL }}
           TREND_REGION: US
           TREND_LOOKBACK_HOURS: 24
         run: |
-          test -n "$GEMINI_API_KEY" || { echo "GEMINI_API_KEY secret is missing"; exit 1; }
-          test -n "$PEXELS_API_KEY" || { echo "PEXELS_API_KEY secret is missing"; exit 1; }
-          test -n "$YOUTUBE_API_KEY" || { echo "YOUTUBE_API_KEY secret is missing"; exit 1; }
-          set +e
+          set -o pipefail
           python main.py --autopilot 2>&1 | tee autopilot.log
-          status=${PIPESTATUS[0]}
-          exit "$status"
-      - name: Save failure details
-        if: failure()
-        run: |
-          if [ -f autopilot.log ]; then
-            mkdir -p data
-            cp autopilot.log data/last_autopilot_error.txt
-            echo "Captured autopilot failure log."
-          fi
-      - name: Commit histories and failure details
+
+      - name: Persist histories and diagnostics
         if: always()
         run: |
-          if git diff --quiet -- data/topic_history.json data/pexels_history.json data/last_autopilot_error.txt 2>/dev/null; then
-            echo "No files to commit."
-            exit 0
-          fi
+          mkdir -p data
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/topic_history.json data/pexels_history.json data/last_autopilot_error.txt 2>/dev/null || true
-          git commit -m "Persist autopilot history and diagnostics" || true
+          git add data/topic_history.json data/pexels_history.json 2>/dev/null || true
+          if [ -f autopilot.log ]; then cp autopilot.log data/last_autopilot.log; git add data/last_autopilot.log; fi
+          git commit -m "Persist YouTube autopilot history" || true
           git push || true
-      - name: Upload result and failure log
+
+      - name: Upload exactly three useful artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: combined-autopilot-test
+          name: youtube-production
           path: |
             output/**/final.mp4
             output/**/manifest.json
-            output/trends-*.json
-            autopilot.log
+            output/**/storyboard.json
           if-no-files-found: warn
           retention-days: 7
