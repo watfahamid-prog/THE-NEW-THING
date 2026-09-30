@@ -13,6 +13,7 @@ on:
       - "ai_video.py"
       - "audio.py"
       - "config.py"
+      - "openai_editor.py"
       - ".github/workflows/combined-autopilot-test.yml"
 
 concurrency:
@@ -43,18 +44,22 @@ jobs:
 
       - name: Validate required secrets
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}\n          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           test -n "$GEMINI_API_KEY" || { echo "::error::GEMINI_API_KEY is missing"; exit 1; }
           test -n "$PEXELS_API_KEY" || { echo "::error::PEXELS_API_KEY is missing"; exit 1; }
           test -n "$YOUTUBE_API_KEY" || { echo "::error::YOUTUBE_API_KEY is missing"; exit 1; }
+          test -n "$OPENAI_API_KEY" || { echo "::warning::OPENAI_API_KEY is missing; OpenAI refinement will be skipped"; }
 
       - name: Generate one YouTube video
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
