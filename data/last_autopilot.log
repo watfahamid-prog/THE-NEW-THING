@@ -1,0 +1,18 @@
+ERROR: ELEVENLABS_API_KEY is set but ELEVENLABS_VOICE_ID is missing.
+[topics] Gemini topic generation failed: 404 Client Error: Not Found for url: https://generativelanguage.googleapis.com/v1beta/models/:generateContent
+[autopilot] YouTube signals: 20
+[autopilot] Gemini topic candidates: 12
+[autopilot] selected topic: 🔴LIVE | DAWSON TRAILER PARK | SHROUD X DOUBLELIFT | TESTICULAR TORSION TUESDAY | #BUNGULATE
+[autopilot] topic source: youtube_fallback
+Traceback (most recent call last):
+  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/main.py", line 100, in <module>
+    from autopilot import run; print("VIDEO_READY="+str(run()))
+                                                        ^^^^^
+  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/autopilot.py", line 28, in run
+    result=build(
+           ^^^^^^
+  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/main.py", line 11, in build
+    validate()
+  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/config.py", line 34, in validate
+    raise RuntimeError("ELEVENLABS_API_KEY is set but ELEVENLABS_VOICE_ID is missing.")
+RuntimeError: ELEVENLABS_API_KEY is set but ELEVENLABS_VOICE_ID is missing.
