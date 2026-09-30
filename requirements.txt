@@ -2,8 +2,3 @@ python-dotenv>=1.0.1
 requests>=2.32.0
 Pillow>=10.4.0
 numpy>=2.1.0
-kokoro>=0.9.4
-soundfile>=0.12.1
-
-clldutils>=3.24.1,<4
-segments>=2.3.0,<3
