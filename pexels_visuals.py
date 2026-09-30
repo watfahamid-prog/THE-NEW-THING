@@ -185,7 +185,15 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
         if not files:
             continue
         candidate_id = str(candidate.get("id", ""))
-        _download(files[0]["link"], source)
+        try:
+            _download(files[0]["link"], source)
+        except RuntimeError as exc:
+            # A Pexels search result can be valid while its CDN file is temporarily
+            # unavailable. Skip that candidate and try the next result instead of
+            # killing the entire video.
+            print(f"[pexels] download failed, skipping id={candidate_id}: {exc}")
+            source.unlink(missing_ok=True)
+            continue
 
         digest = hashlib.sha256()
         with source.open("rb") as f:
