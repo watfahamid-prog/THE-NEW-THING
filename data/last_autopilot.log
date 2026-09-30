@@ -1,7 +1,7 @@
 Traceback (most recent call last):
-  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/main.py", line 2, in <module>
-    from config import OUTPUT_DIR,validate
-  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/config.py", line 6
-    GEMINI_API_KEY=os.getenv("GEMINI_API_KEY","").strip()\nOPENAI_API_KEY=os.getenv("OPENAI_API_KEY","").strip()\nOPENAI_MODEL=os.getenv("OPENAI_MODEL","gpt-4.1-mini").strip()
-                                                          ^
+  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/main.py", line 3, in <module>
+    from openai_editor import improve_storyboard
+  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/openai_editor.py", line 1
+    import json\nimport requests\nfrom config import OPENAI_API_KEY, OPENAI_MODEL\n\ndef improve_storyboard(storyboard: dict, topic: str) -> dict:\n    if not OPENAI_API_KEY:\n        print("[openai] OPENAI_API_KEY missing; keeping Gemini storyboard unchanged.")\n        return storyboard\n    fmt=storyboard.get("format","explainer")\n    if fmt=="ranking":\n        target={"format":fmt,"topic":topic,"hook":storyboard.get("hook",""),"ranking_entries":storyboard.get("ranking_entries",[])}\n        instruction="""Improve ONLY the spoken hook for a YouTube Shorts ranking video. Keep the topic and all ranking entries unchanged. Make it punchy, natural, energetic and curiosity-driven. Do not say number 1/number 2, do not repeat phrases, do not add facts that are not supplied, and keep it under 30 words. Return JSON: {\"hook\":\"...\"}."""\n    else:\n        target={"format":fmt,"topic":topic,"hook":storyboard.get("hook",""),"script":storyboard.get("script","")}\n        instruction="""Improve
+                ^
 SyntaxError: unexpected character after line continuation character
