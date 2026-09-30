@@ -98,7 +98,7 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
     history["sha256"]=sorted(set(history.get("sha256",[]))|used_hashes)
     save_persistent_history(history)
 
-    manifest={"run_id":run_id,"topic":topic,"title":storyboard.get("title"),"hook":storyboard.get("hook"),"hook_variants":storyboard.get("hook_variants",[]),"format":storyboard.get("format"),"ranking_entries":storyboard.get("ranking_entries",[]),"tier_entries":storyboard.get("tier_entries",[]),"script":storyboard.get("script"),"trend":selected_trend,"scenes":scene_meta,"generation":{"mode":"pexels_stock_video","voice":"elevenlabs" if __import__("config").ELEVENLABS_API_KEY and __import__("config").ELEVENLABS_VOICE_ID else "kokoro_local","scene_count":len(scene_paths),"external_video_generation":False},"qc":qc,"files":{"video":str(final),"storyboard":str(root/"storyboard.json"),"captions":str(srt)}}
+    manifest={"run_id":run_id,"topic":topic,"title":storyboard.get("title"),"hook":storyboard.get("hook"),"hook_variants":storyboard.get("hook_variants",[]),"format":storyboard.get("format"),"ranking_entries":storyboard.get("ranking_entries",[]),"tier_entries":storyboard.get("tier_entries",[]),"script":storyboard.get("script"),"trend":selected_trend,"scenes":scene_meta,"generation":{"mode":"pexels_stock_video","voice":__import__("audio").LAST_VOICE_PROVIDER,"scene_count":len(scene_paths),"external_video_generation":False},"qc":qc,"files":{"video":str(final),"storyboard":str(root/"storyboard.json"),"captions":str(srt)}}
     manifest_path=root/"manifest.json"; manifest_path.write_text(json.dumps(manifest,indent=2),encoding="utf-8")
     print(f"[pipeline] QC passed: {qc}")
     return final
