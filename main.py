@@ -1,5 +1,5 @@
 import argparse,json,sys,time,uuid
-from config import OUTPUT_DIR,validate
+from config import OUTPUT_DIR,validate\nfrom openai_editor import improve_storyboard
 from storyboard import create_storyboard
 from ai_video import generate_scene
 from pexels_visuals import load_persistent_history, save_persistent_history
@@ -13,7 +13,7 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
     root=OUTPUT_DIR/run_id; scenes_dir=root/"scenes"; root.mkdir(parents=True,exist_ok=True)
     print(f"[pipeline] started: {topic}")
 
-    storyboard=create_storyboard(topic,hook_override,longform=longform)
+    storyboard=create_storyboard(topic,hook_override,longform=longform)\n    storyboard=improve_storyboard(storyboard,topic)
 
     # Keep Gemini's scene-specific searches. Topic-level searches are only a fallback.
     topic_queries=[]
