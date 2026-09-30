@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any
 import requests
 from config import GEMINI_API_KEY, GEMINI_MODEL, VIDEO_SCENES
@@ -22,17 +23,24 @@ def is_ranking_topic(topic: str) -> bool:
 
 def fallback(topic: str, hook_override: str | None = None) -> dict[str, Any]:
     ranking=is_ranking_topic(topic)
+    m=re.search(r"\btop\s*(\d+)\b", topic.lower())
+    count=max(5,min(int(m.group(1)),10)) if m else 5
     hook=hook_override or (f"These are the moments that deserve the top spots in {topic}." if ranking else f"You probably don't know this about {topic}.")
     if ranking:
-        count=5
         names=[
             "The Warm-Up",
             "The Clean Landing",
             "The Near Miss",
             "The Impossible Gap",
             "The Perfect Run",
+            "The Wildest Finish",
+            "The Cleanest Move",
+            "The Biggest Surprise",
+            "The Most Unexpected Moment",
+            "The Ultimate Finish",
         ]
-        rank_entries=[{"rank":i,"name":names[5-i]} for i in range(1,6)]
+        names=names[:count]
+        rank_entries=[{"rank":i,"name":names[count-i]} for i in range(1,count+1)]
         # Never hard-code a different activity into a ranking fallback.
         # The fallback must stay faithful to the actual topic.
         t=topic.lower()
@@ -57,9 +65,9 @@ def fallback(topic: str, hook_override: str | None = None) -> dict[str, Any]:
             queries=[f"{base} funny moment",f"{base} surprising reaction",f"{base} unexpected moment",f"{base} caught on camera",f"{base} best moment"]
             names=["The Opening Moment","The Reaction","The Unexpected Turn","The Big Moment","The Standout"]
             reactions=["The opening looks normal, then everything changes.","That reaction is what makes this moment work.","The unexpected turn is what you remember.","You can see the whole moment develop in seconds.","That one has the strongest payoff."]
-        rank_entries=[{"rank":i,"name":names[5-i]} for i in range(1,6)]
+        rank_entries=[{"rank":i,"name":names[count-i]} for i in range(1,count+1)]
         scenes=[]
-        for pos,playback_rank in enumerate(range(5,0,-1)):
+        for pos,playback_rank in enumerate(range(count,0,-1)):
             entry=next(x for x in rank_entries if x["rank"]==playback_rank)
             q=queries[pos]
             reaction=reactions[pos]
@@ -74,7 +82,7 @@ def fallback(topic: str, hook_override: str | None = None) -> dict[str, Any]:
                 "commentary":reaction,
             })
         script=hook+" "+" ".join(reactions)
-        return {"title":topic,"hook":hook,"script":script,"format":"ranking","ranking_count":5,
+        return {"title":topic,"hook":hook,"script":script,"format":"ranking","ranking_count":count,
                 "ranking_entries":rank_entries,"scenes":scenes}
 
     # Deterministic fallback must still produce six DIFFERENT, concrete stock-video
@@ -266,10 +274,10 @@ Preferred hook: {hook_override or "create the strongest curiosity hook yourself"
 Create a short vertical video. Format: {"ranking" if ranking else "explainer"}.
 
 If ranking format:
-- Rank exactly 5 entries.
-- Return ranking_entries with exactly five objects containing rank and name.
-- The leaderboard order is ALWAYS 1, 2, 3, 4, 5 from top to bottom.
-- Playback order is ALWAYS 5, 4, 3, 2, 1.
+- Rank exactly {count} entries.
+- Return ranking_entries with exactly {count} objects containing rank and name.
+- The leaderboard order is ALWAYS 1 through {count} from top to bottom.
+- Playback order is ALWAYS {count} down to 1.
 - All five rows stay visible for the entire video.
 - Each scene must contain rank and name matching its entry.
 - Scenes must be returned in playback order: 5, 4, 3, 2, 1.
@@ -321,15 +329,15 @@ Return JSON keys: title, hook, script, format, ranking_entries, scenes."""
                 if isinstance(entry,dict) and str(entry.get("name","")).strip():
                     try: rank=int(entry.get("rank"))
                     except (TypeError,ValueError): continue
-                    if 1 <= rank <= 5: clean.append({"rank":rank,"name":str(entry["name"]).strip()})
+                    if 1 <= rank <= count: clean.append({"rank":rank,"name":str(entry["name"]).strip()})
             clean=sorted({x["rank"]:x for x in clean}.values(),key=lambda x:x["rank"])
-            if len(clean)!=5 or len(normalized)!=5:
+            if len(clean)!=count or len(normalized)!=count:
                 return fallback(topic,hook_override)
             by_rank={int(s.get("rank",0)):s for s in normalized}
-            if any(rank not in by_rank for rank in range(1,6)):
+            if any(rank not in by_rank for rank in range(1,count+1)):
                 return fallback(topic,hook_override)
             ordered=[]
-            for rank in range(5,0,-1):
+            for rank in range(count,0,-1):
                 s=dict(by_rank[rank])
                 entry=next(x for x in clean if x["rank"]==rank)
                 s["rank"]=rank
