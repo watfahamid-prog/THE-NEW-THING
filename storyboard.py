@@ -55,17 +55,60 @@ def fallback(topic: str, hook_override: str | None = None) -> dict[str, Any]:
         return {"title":topic,"hook":hook,"script":script,"format":"ranking","ranking_count":5,
                 "ranking_entries":rank_entries,"scenes":scenes}
 
+    # Deterministic fallback must still produce six DIFFERENT, concrete stock-video
+    # searches. The old fallback repeated the topic for every scene, which made Pexels
+    # return visually similar or unrelated footage.
+    t=topic.lower()
+    if "cat" in t:
+        queries=["funny cat playing","cat surprised reaction","cat jumping","cat chasing toy","cat funny fail","cat curious closeup"]
+    elif "dog" in t:
+        queries=["funny dog reaction","dog playing fetch","dog surprised","dog running funny","dog jumping","dog curious closeup"]
+    elif any(x in t for x in ("football","soccer")):
+        queries=["soccer skill","football freestyle","soccer trick","football dribbling skill","soccer trick shot","football celebration"]
+    elif any(x in t for x in ("basketball","dunk")):
+        queries=["basketball trick shot","basketball dunk","basketball dribbling skill","basketball crossover","basketball jump shot","basketball street move"]
+    elif any(x in t for x in ("skate","bmx","parkour")):
+        queries=[f"{topic} trick",f"{topic} jump",f"{topic} landing",f"{topic} skill",f"{topic} action",f"{topic} closeup"]
+    elif any(x in t for x in ("animal","wildlife")):
+        queries=["funny animal reaction","animal playing","animal running","animal surprising behavior","wildlife closeup","animal interaction"]
+    elif any(x in t for x in ("machine","satisfying","process")):
+        queries=["satisfying machine process","industrial machine closeup","precision machine work","factory process","robot machine working","satisfying mechanical movement"]
+    elif any(x in t for x in ("food","cooking")):
+        queries=["street food cooking","chef fast hands","food preparation closeup","satisfying cooking process","food transformation","cooking closeup"]
+    elif any(x in t for x in ("fail","fails","recovery")):
+        queries=["funny harmless fail","funny recovery","unexpected recovery","safe sports fail","funny reaction","surprising save"]
+    else:
+        queries=[f"{topic} action",f"{topic} closeup",f"{topic} reaction",f"{topic} movement",f"{topic} real life",f"{topic} moment"]
+
     prompts=[
-        ("instant visual hook","fast push-in",f"Realistic vertical stock VIDEO footage about {topic}; immediate physical action, surprising subject, clear motion, no text, no logos."),
-        ("establish context","lateral tracking",f"Realistic vertical stock VIDEO footage showing the world around {topic}; concrete subject performing a visible action, natural motion, no text, no logos."),
-        ("first key idea","controlled orbit",f"Realistic vertical stock VIDEO footage demonstrating the first important idea behind {topic} through a physical action, detailed and believable, no text."),
-        ("escalation","low-angle tracking",f"Realistic vertical stock VIDEO footage connected to {topic}; increasing scale and motion, dramatic but believable action, no text, no logos."),
-        ("surprising payoff","rapid reveal then close-up",f"Realistic vertical stock VIDEO footage of a surprising reveal connected to {topic}; clear cause and effect, visible movement, no text."),
-        ("loopable ending","slow pull-back",f"Realistic vertical stock VIDEO footage about {topic} that echoes the opening subject and motion, smooth movement, no text, no logos.")
+        ("instant visual hook","fast push-in"),
+        ("establish context","lateral tracking"),
+        ("first key idea","controlled orbit"),
+        ("escalation","low-angle tracking"),
+        ("surprising payoff","rapid reveal then close-up"),
+        ("loopable ending","slow pull-back")
     ]
-    scenes=[{"duration":5,"purpose":p,"camera":c,"prompt":x,"continuity":"Keep visual language and the main subject coherent."} for p,c,x in prompts[:VIDEO_SCENES]]
-    while len(scenes)<VIDEO_SCENES: scenes.append(scenes[-1].copy())
-    return {"title":topic,"hook":hook,"script":f"Here is the part about {topic} that most people miss. First, understand what is actually happening. Then look at why it matters. The surprising part is what happens next. Once you see the pattern, the whole story makes much more sense.","format":"explainer","scenes":scenes}
+    scenes=[]
+    for i,(purpose,camera) in enumerate(prompts[:VIDEO_SCENES]):
+        q=queries[i % len(queries)]
+        scenes.append({
+            "duration":5,
+            "purpose":purpose,
+            "camera":camera,
+            "prompt":f"Realistic vertical stock VIDEO of {q}; clear continuous physical action, natural movement, no text, no logos, no screenshots.",
+            "visual_search_queries":[q],
+            "continuity":"Keep the same subject category while changing the action and shot."
+        })
+    while len(scenes)<VIDEO_SCENES:
+        scenes.append(dict(scenes[-1]))
+        scenes[-1]["visual_search_queries"]=[queries[len(scenes)-1] if len(scenes)-1<len(queries) else queries[-1]]
+        scenes[-1]["prompt"]=f"Realistic vertical stock VIDEO of {scenes[-1]['visual_search_queries'][0]}; distinct moving action, natural camera movement, no text, no logos."
+
+    script=(f"Forget the generic version of {topic}. The interesting part is what actually happens on camera. "
+            f"We start with a moment that grabs your attention, then move through different examples so every shot adds something new. "
+            f"Watch the details in each clip, because the funniest or most surprising part can happen in a second. "
+            f"By the end, the last moment should make the opening feel even more interesting.")
+    return {"title":topic,"hook":hook,"script":script,"format":"explainer","scenes":scenes}
 
 def _create_tier_storyboard(topic: str, hook_override: str | None = None) -> dict[str, Any]:
     if not GEMINI_API_KEY:
