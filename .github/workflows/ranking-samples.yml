@@ -4,6 +4,10 @@ on:
   push:
     paths:
       - ".github/workflows/ranking-samples.yml"
+      - "storyboard.py"
+      - "render.py"
+      - "audio.py"
+      - "main.py"
   workflow_dispatch:
 
 concurrency:
