@@ -3,7 +3,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
-GEMINI_API_KEY=os.getenv("GEMINI_API_KEY","").strip()\nOPENAI_API_KEY=os.getenv("OPENAI_API_KEY","").strip()\nOPENAI_MODEL=os.getenv("OPENAI_MODEL","gpt-4.1-mini").strip()
+GEMINI_API_KEY=os.getenv("GEMINI_API_KEY","").strip()
+OPENAI_API_KEY=os.getenv("OPENAI_API_KEY","").strip()
+OPENAI_MODEL=os.getenv("OPENAI_MODEL","gpt-4.1-mini").strip()
 GEMINI_MODEL=os.getenv("GEMINI_MODEL","gemini-3.5-flash-lite").strip()
 PEXELS_API_KEY=os.getenv("PEXELS_API_KEY","").strip()
 ELEVENLABS_API_KEY=os.getenv("ELEVENLABS_API_KEY","").strip()
