@@ -17,6 +17,11 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
     storyboard=create_storyboard(topic,hook_override,longform=longform)
     storyboard=improve_storyboard(storyboard,topic)
 
+    # Current repository contract: ranked Shorts only.
+    # Stop instead of silently producing a generic explainer.
+    if not longform and storyboard.get("format") != "ranking":
+        raise RuntimeError("Ranking guard failed: storyboard was not a Top-N ranking.")
+
     # Keep Gemini's scene-specific searches. Topic-level searches are only a fallback.
     topic_queries=[]
     if isinstance(selected_trend,dict):
@@ -50,8 +55,10 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
     narration_duration=media_duration(voice)
 
     if storyboard.get("format")=="ranking":
-        per_scene=5.0
-        visual_duration=per_scene*len(storyboard["scenes"])
+        # Fit the entire ElevenLabs narration instead of truncating it to 5s x N.
+        min_per_scene=4.5
+        visual_duration=max(min_per_scene*len(storyboard["scenes"]), narration_duration+0.75)
+        per_scene=visual_duration/max(len(storyboard["scenes"]),1)
     elif storyboard.get("format") in ("longform","tierlist"):
         visual_duration=max(narration_duration+1.0,len(storyboard["scenes"])*6.0)
         per_scene=visual_duration/max(len(storyboard["scenes"]),1)
@@ -98,7 +105,7 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
     history["sha256"]=sorted(set(history.get("sha256",[]))|used_hashes)
     save_persistent_history(history)
 
-    manifest={"run_id":run_id,"topic":topic,"title":storyboard.get("title"),"hook":storyboard.get("hook"),"hook_variants":storyboard.get("hook_variants",[]),"format":storyboard.get("format"),"ranking_entries":storyboard.get("ranking_entries",[]),"tier_entries":storyboard.get("tier_entries",[]),"script":storyboard.get("script"),"trend":selected_trend,"scenes":scene_meta,"generation":{"mode":"pexels_stock_video","voice":__import__("audio").LAST_VOICE_PROVIDER,"scene_count":len(scene_paths),"external_video_generation":False},"qc":qc,"files":{"video":str(final),"storyboard":str(root/"storyboard.json"),"captions":str(srt)}}
+    manifest={"run_id":run_id,"topic":topic,"title":storyboard.get("title"),"production_contract":{"format":"ranking","elevenlabs_required":True,"unique_clips_required":True},"hook":storyboard.get("hook"),"hook_variants":storyboard.get("hook_variants",[]),"format":storyboard.get("format"),"ranking_entries":storyboard.get("ranking_entries",[]),"tier_entries":storyboard.get("tier_entries",[]),"script":storyboard.get("script"),"trend":selected_trend,"scenes":scene_meta,"generation":{"mode":"pexels_stock_video","voice":__import__("audio").LAST_VOICE_PROVIDER,"scene_count":len(scene_paths),"external_video_generation":False},"qc":qc,"files":{"video":str(final),"storyboard":str(root/"storyboard.json"),"captions":str(srt)}}
     manifest_path=root/"manifest.json"; manifest_path.write_text(json.dumps(manifest,indent=2),encoding="utf-8")
     print(f"[pipeline] QC passed: {qc}")
     return final
