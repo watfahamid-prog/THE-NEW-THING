@@ -23,7 +23,14 @@ def run():
     print(f"[autopilot] selected topic: {selected['topic']}")
     print(f"[autopilot] topic source: {selected.get('source')}")
 
-    hooks=variants(selected["topic"])
+    # Current YouTube contract: every autopilot output is an explicit Top 5/6/10 ranking.
+    import re
+    raw_topic=selected["topic"].strip()
+    m=re.search(r"\btop\s*(5|6|10)\b", raw_topic, re.I)
+    ranking_topic=raw_topic if m else f"Top 5 {raw_topic}"
+    selected=dict(selected)
+    selected["topic"]=ranking_topic
+    hooks=variants(ranking_topic)
     hook=choose(hooks)
     result=build(
         selected["topic"],
