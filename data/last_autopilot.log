@@ -1,6 +1,26 @@
+ERROR: ElevenLabs HTTP 401: {"detail":{"type":"invalid_request","code":"quota_exceeded","message":"This request exceeds your quota of 10000. You have 3 credits remaining, while 149 credits are required for this request.","status":"quota_exceeded","request_id":"4bea55d1d1be7fa13c6b8f12524aef3d"}}
+[topics] Gemini topic generation failed: 429 Client Error: Too Many Requests for url: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent
+[autopilot] YouTube signals: 20
+[autopilot] Gemini topic candidates: 7
+[autopilot] selected topic: animals doing things that look almost human
+[autopilot] topic source: safe_fallback
+[config] ELEVENLABS_VOICE_ID not set; audio.py will auto-select a voice from ElevenLabs.
+[pipeline] started: Top 5 animals doing things that look almost human
+Gemini storyboard unavailable (429 Client Error: Too Many Requests for url: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent); using local fallback storyboard.
+[openai] refinement unavailable (429 Client Error: Too Many Requests for url: https://api.openai.com/v1/chat/completions); keeping original storyboard.
+[pipeline] storyboard ready: ranking / 5 scenes
+[tts] ElevenLabs auto-selected voice=CwhRBWXzGAHq8TQ4Fs17 name=Roger - Laid-Back, Casual, Resonant
 Traceback (most recent call last):
-  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/main.py", line 7, in <module>
-    from audio import make_voiceover
-  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/audio.py", line 4, in <module>
-    import soundfile as sf
-ModuleNotFoundError: No module named 'soundfile'
+  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/main.py", line 119, in <module>
+    from autopilot import run; print("VIDEO_READY="+str(run()))
+                                                        ^^^^^
+  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/autopilot.py", line 35, in run
+    result=build(
+           ^^^^^^
+  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/main.py", line 54, in build
+    make_voiceover(narration_text,voice)
+  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/audio.py", line 66, in make_voiceover
+    _elevenlabs(text,output_path)
+  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/audio.py", line 41, in _elevenlabs
+    raise RuntimeError(f"ElevenLabs HTTP {response.status_code}: {response.text[:800]}")
+RuntimeError: ElevenLabs HTTP 401: {"detail":{"type":"invalid_request","code":"quota_exceeded","message":"This request exceeds your quota of 10000. You have 3 credits remaining, while 149 credits are required for this request.","status":"quota_exceeded","request_id":"4bea55d1d1be7fa13c6b8f12524aef3d"}}
