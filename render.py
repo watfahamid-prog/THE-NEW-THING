@@ -49,7 +49,8 @@ def _write_ranking_ass(path: Path, title: str, entries: list[dict], per_scene: f
     for pos,entry in enumerate(entries):
         rank=int(entry.get("rank",pos+1))
         name=_ass_escape(entry.get("name") or f"Rank {rank}")
-        y=255+pos*205
+        row_height=max(120,min(205,(1920-330)/max(len(entries),1)))
+        y=250+pos*row_height
         lines.append(f"Dialogue: 0,0:00:00.00,{_ass_time(total_duration)},Rank,,0,0,0,,{{\\pos(62,{y})}}{rank}")
         lines.append(f"Dialogue: 0,0:00:00.00,{_ass_time(total_duration)},Name,,0,0,0,,{{\\pos(145,{y+12})}}{name}")
         scene_index=max(0,len(entries)-rank)
@@ -164,7 +165,7 @@ def apply_ranking_overlay(video: Path, storyboard: dict, output: Path, total_dur
         entries=[]
         for i,scene in enumerate(storyboard.get("scenes",[]),1):
             entries.append({"rank":i,"name":scene.get("name") or scene.get("purpose") or f"Entry {i}"})
-    entries=sorted(entries,key=lambda x:int(x.get("rank",0)))[:5]
+    entries=sorted(entries,key=lambda x:int(x.get("rank",0)))[:10]
     if not entries:
         video.replace(output)
         return
