@@ -54,29 +54,14 @@ def _elevenlabs(text: str, output_path: Path):
     LAST_VOICE_ID=voice_id
     print(f"[tts] ElevenLabs voice={voice_id} model={ELEVENLABS_MODEL}")
 
-def _kokoro(text: str, output_path: Path):
-    import numpy as np
-    from kokoro import KPipeline
-    pipeline=KPipeline(lang_code="a")
-    chunks=[]
-    for _,_,audio in pipeline(text,voice="af_heart",speed=1.08,split_pattern=r"\n+"):
-        chunks.append(audio)
-    if not chunks:
-        raise RuntimeError("Kokoro TTS produced no audio.")
-    sf.write(output_path,np.concatenate(chunks),24000,format="WAV")
-    print("[tts] Kokoro fallback")
-
 def make_voiceover(text: str, output_path: Path):
     global LAST_VOICE_PROVIDER, LAST_VOICE_ID
     LAST_VOICE_PROVIDER="none"
     LAST_VOICE_ID=""
     output_path.parent.mkdir(parents=True,exist_ok=True)
-    if ELEVENLABS_API_KEY:
-        try:
-            _elevenlabs(text,output_path)
-            return
-        except Exception as exc:
-            print(f"[tts] ElevenLabs failed; falling back to Kokoro: {exc}")
-    _kokoro(text,output_path)
-    LAST_VOICE_PROVIDER="kokoro_local"
-    LAST_VOICE_ID="af_heart"
+
+    # ElevenLabs is the production voice for this project. Never silently
+    # substitute another voice engine, because that makes samples inconsistent.
+    if not ELEVENLABS_API_KEY:
+        raise RuntimeError("ELEVENLABS_API_KEY is required for the YouTube ranking pipeline.")
+    _elevenlabs(text,output_path)
