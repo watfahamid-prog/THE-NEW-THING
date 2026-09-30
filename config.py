@@ -5,12 +5,12 @@ load_dotenv()
 
 GEMINI_API_KEY=os.getenv("GEMINI_API_KEY","").strip()
 OPENAI_API_KEY=os.getenv("OPENAI_API_KEY","").strip()
-OPENAI_MODEL=os.getenv("OPENAI_MODEL","gpt-4.1-mini").strip()
-GEMINI_MODEL=os.getenv("GEMINI_MODEL","gemini-3.5-flash-lite").strip()
+OPENAI_MODEL=os.getenv("OPENAI_MODEL","").strip() or "gpt-4.1-mini"
+GEMINI_MODEL=os.getenv("GEMINI_MODEL","").strip() or "gemini-3.8-flash"
 PEXELS_API_KEY=os.getenv("PEXELS_API_KEY","").strip()
 ELEVENLABS_API_KEY=os.getenv("ELEVENLABS_API_KEY","").strip()
 ELEVENLABS_VOICE_ID=os.getenv("ELEVENLABS_VOICE_ID","").strip()
-ELEVENLABS_MODEL=os.getenv("ELEVENLABS_MODEL","eleven_flash_v2_5").strip()
+ELEVENLABS_MODEL=os.getenv("ELEVENLABS_MODEL","").strip() or "eleven_flash_v2_5"
 YOUTUBE_API_KEY=os.getenv("YOUTUBE_API_KEY","").strip()
 TREND_REGION=os.getenv("TREND_REGION","US").strip().upper()
 TREND_LOOKBACK_HOURS=int(os.getenv("TREND_LOOKBACK_HOURS","24"))
@@ -33,4 +33,4 @@ def validate():
     if not YOUTUBE_API_KEY:
         print("[config] YOUTUBE_API_KEY missing; trend discovery will use fallback signals.")
     if ELEVENLABS_API_KEY and not ELEVENLABS_VOICE_ID:
-        raise RuntimeError("ELEVENLABS_API_KEY is set but ELEVENLABS_VOICE_ID is missing.")
+        print("[config] ELEVENLABS_API_KEY is set but no voice ID was provided; audio.py will use the local Kokoro fallback.")
