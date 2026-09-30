@@ -32,5 +32,7 @@ def validate():
         print("[config] GEMINI_API_KEY missing; local storyboard fallback will be used.")
     if not YOUTUBE_API_KEY:
         print("[config] YOUTUBE_API_KEY missing; trend discovery will use fallback signals.")
-    if ELEVENLABS_API_KEY and not ELEVENLABS_VOICE_ID:
-        print("[config] ELEVENLABS_API_KEY is set but no voice ID was provided; audio.py will use the local Kokoro fallback.")
+    if not ELEVENLABS_API_KEY:
+        raise RuntimeError("ELEVENLABS_API_KEY is required for the current YouTube ranking pipeline.")
+    if not ELEVENLABS_VOICE_ID:
+        print("[config] ELEVENLABS_VOICE_ID not set; audio.py will auto-select a voice from ElevenLabs.")
