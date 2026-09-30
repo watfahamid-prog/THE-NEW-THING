@@ -344,6 +344,9 @@ Return JSON keys: title, hook, script, format, ranking_entries, scenes."""
             clean=sorted({x["rank"]:x for x in clean}.values(),key=lambda x:x["rank"])
             if len(clean)!=count or len(normalized)!=count:
                 return fallback(topic,hook_override)
+            if any(not str(s.get("commentary","")).strip() for s in normalized):
+                print("[storyboard] Ranking scene commentary missing; using deterministic ranking fallback.")
+                return fallback(topic,hook_override)
             by_rank={int(s.get("rank",0)):s for s in normalized}
             if any(rank not in by_rank for rank in range(1,count+1)):
                 return fallback(topic,hook_override)
@@ -365,6 +368,8 @@ Return JSON keys: title, hook, script, format, ranking_entries, scenes."""
             result["ranking_entries"]=clean
             result["ranking_count"]=count
             result["format"]="ranking"
+            # The renderer depends on a real Top-N title, not a generic topic title.
+            result["title"]=f"Top {count}: {topic}"
             return result
         if len(normalized)==VIDEO_SCENES:
             result["scenes"]=normalized
