@@ -1,7 +1,6 @@
 from pathlib import Path
 import io
 import requests
-import soundfile as sf
 from config import ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, ELEVENLABS_MODEL
 
 LAST_VOICE_PROVIDER="none"
