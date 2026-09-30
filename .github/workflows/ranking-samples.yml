@@ -1,0 +1,102 @@
+name: Ranking Sample Generator
+
+on:
+  push:
+    paths:
+      - ".github/workflows/ranking-samples.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ranking-samples
+  cancel-in-progress: false
+
+jobs:
+  samples:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: top5
+            topic: "Top 5 Funniest Cat Moments"
+          - id: top6
+            topic: "Top 6 Craziest Football Skills"
+          - id: top10
+            topic: "Top 10 Most Satisfying Things to Watch"
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install FFmpeg + TTS runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak-ng
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Generate ranking sample
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash'
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4.1-mini'
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY
+          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID || secrets.ELEVENLABS_VOICE_ID_1
+          ELEVENLABS_MODEL: ${{ vars.ELEVENLABS_MODEL || 'eleven_flash_v2_5'
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY
+        run: |
+          set -o pipefail
+          python main.py --topic "${{ matrix.topic" 2>&1 | tee sample.log
+
+      - name: Validate ranking sample
+        run: |
+          python - <<'PY'
+          import json, glob, os, sys
+          manifests=glob.glob("output/**/manifest.json", recursive=True)
+          if not manifests:
+              raise SystemExit("No manifest generated")
+          path=max(manifests, key=os.path.getmtime)
+          m=json.load(open(path, encoding="utf-8"))
+          entries=m.get("ranking_entries", [])
+          scenes=m.get("scenes", [])
+          expected=int("${{ matrix.id".replace("top",""))
+          print("format:",m.get("format"))
+          print("entries:",len(entries))
+          print("scenes:",len(scenes))
+          print("voice:",m.get("generation",{}).get("voice"))
+          if m.get("format")!="ranking":
+              raise SystemExit("QC FAIL: not a ranking video")
+          if len(entries)!=expected or len(scenes)!=expected:
+              raise SystemExit(f"QC FAIL: expected {expected} entries/scenes")
+          if m.get("generation",{}).get("voice")!="elevenlabs":
+              raise SystemExit("QC FAIL: ElevenLabs was not used")
+          ranks=[int(e.get("rank",0)) for e in entries]
+          if ranks!=list(range(1,expected+1)):
+              raise SystemExit("QC FAIL: ranking order is wrong")
+          ids=[str(s.get("pexels_id","")) for s in scenes if s.get("pexels_id")]
+          if len(ids)!=len(set(ids)):
+              raise SystemExit("QC FAIL: duplicate Pexels clip IDs inside sample")
+          print("QC PASS")
+          PY
+
+      - name: Upload sample
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ranking-sample-${{ matrix.id
+          path: |
+            output/**/final.mp4
+            output/**/manifest.json
+            output/**/storyboard.json
+            sample.log
+          if-no-files-found: warn
+          retention-days: 7
