@@ -65,12 +65,21 @@ def fallback(topic: str, hook_override: str | None = None) -> dict[str, Any]:
             queries=[f"{base} funny moment",f"{base} surprising reaction",f"{base} unexpected moment",f"{base} caught on camera",f"{base} best moment"]
             names=["The Opening Moment","The Reaction","The Unexpected Turn","The Big Moment","The Standout"]
             reactions=["The opening looks normal, then everything changes.","That reaction is what makes this moment work.","The unexpected turn is what you remember.","You can see the whole moment develop in seconds.","That one has the strongest payoff."]
-        rank_entries=[{"rank":i,"name":names[count-i]} for i in range(1,count+1)]
+        while len(names)<count:
+            names.append(f"Standout Moment {len(names)+1}")
+        while len(queries)<count:
+            queries.append(queries[-1] + f" variation {len(queries)+1}")
+        while len(reactions)<count:
+            reactions.append("This moment adds another reason it belongs in the ranking.")
+        names=names[:count]
+        queries=queries[:count]
+        reactions=reactions[:count]
+        rank_entries=[{"rank":i,"name":names[i-1]} for i in range(1,count+1)]
         scenes=[]
         for pos,playback_rank in enumerate(range(count,0,-1)):
             entry=next(x for x in rank_entries if x["rank"]==playback_rank)
-            q=queries[pos]
-            reaction=reactions[pos]
+            q=queries[count-1-playback_rank+1]
+            reaction=reactions[count-1-playback_rank+1]
             scenes.append({
                 "duration":5,
                 "purpose":f"rank {playback_rank}",
