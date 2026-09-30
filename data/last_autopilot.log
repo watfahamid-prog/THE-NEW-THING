@@ -1,4 +1,7 @@
-  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/main.py", line 2
-    from config import OUTPUT_DIR,validate\nfrom openai_editor import improve_storyboard
-                                           ^
+Traceback (most recent call last):
+  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/main.py", line 2, in <module>
+    from config import OUTPUT_DIR,validate
+  File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/config.py", line 6
+    GEMINI_API_KEY=os.getenv("GEMINI_API_KEY","").strip()\nOPENAI_API_KEY=os.getenv("OPENAI_API_KEY","").strip()\nOPENAI_MODEL=os.getenv("OPENAI_MODEL","gpt-4.1-mini").strip()
+                                                          ^
 SyntaxError: unexpected character after line continuation character
