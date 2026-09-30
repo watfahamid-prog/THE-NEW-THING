@@ -52,7 +52,7 @@ def _write_ranking_ass(path: Path, title: str, entries: list[dict], per_scene: f
         y=255+pos*205
         lines.append(f"Dialogue: 0,0:00:00.00,{_ass_time(total_duration)},Rank,,0,0,0,,{{\\pos(62,{y})}}{rank}")
         lines.append(f"Dialogue: 0,0:00:00.00,{_ass_time(total_duration)},Name,,0,0,0,,{{\\pos(145,{y+12})}}{name}")
-        scene_index=max(0,5-rank)
+        scene_index=max(0,len(entries)-rank)
         start=scene_index*per_scene
         end=min(total_duration,(scene_index+1)*per_scene)
         lines.append(f"Dialogue: 1,{_ass_time(start)},{_ass_time(end)},ActiveRank,,0,0,0,,{{\\pos(58,{y-4})}}{rank}")
