@@ -142,7 +142,7 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
             continue
         # Reject obviously weak/short results before downloading them.
         duration=float(v.get("duration") or 0)
-        if duration < max(2.5, float(duration or 0)):
+        if duration and duration < 2.5:
             continue
         files=[x for x in v.get("video_files",[]) if x.get("file_type")=="video/mp4" and x.get("link")]
         if not files:
