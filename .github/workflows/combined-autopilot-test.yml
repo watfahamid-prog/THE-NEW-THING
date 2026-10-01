@@ -1,6 +1,8 @@
 name: YouTube Production Autopilot
 
 on:
+  push:
+    branches: ["main"]
   workflow_dispatch:
   schedule:
     - cron: "0 */6 * * *"
@@ -11,6 +13,7 @@ concurrency:
 
 jobs:
   autopilot:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -22,11 +25,6 @@ jobs:
         with:
           python-version: "3.12"
           cache: "pip"
-
-      - name: Install FFmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
