@@ -208,8 +208,9 @@ def apply_advanced_edit(video: Path, storyboard: dict, output: Path):
     # create needless frame expansion. Use a fast, deterministic finishing
     # filter instead while keeping the footage lively.
     vf=(
-        "scale=iw*1.035:ih*1.035,"
-        "crop=iw/1.035:ih/1.035,"
+        "scale=ceil(iw*1.035/2)*2:ceil(ih*1.035/2)*2,"
+        "crop=1080:1920:(iw-1080)/2:(ih-1920)/2,"
+        "setsar=1,"
         "eq=contrast=1.04:saturation=1.07:brightness=0.005,"
         "vignette=PI/5,"
         "fps=30"
