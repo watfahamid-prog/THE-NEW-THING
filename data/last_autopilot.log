@@ -1,4 +1,4 @@
-ERROR: ElevenLabs HTTP 401: {"detail":{"type":"invalid_request","code":"quota_exceeded","message":"This request exceeds your quota of 10000. You have 3 credits remaining, while 149 credits are required for this request.","status":"quota_exceeded","request_id":"5a588394942a0fe13de9c37777028f42"}}
+ERROR: ElevenLabs HTTP 401: {"detail":{"type":"invalid_request","code":"quota_exceeded","message":"This request exceeds your quota of 10000. You have 3 credits remaining, while 149 credits are required for this request.","status":"quota_exceeded","request_id":"02bec6c75497896998b0b19cf59f1314"}}
 [topics] Gemini topic generation failed: 503 Server Error: Service Unavailable for url: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent
 [autopilot] YouTube signals: 20
 [autopilot] Gemini topic candidates: 7
@@ -23,4 +23,4 @@ Traceback (most recent call last):
     _elevenlabs(text,output_path)
   File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/audio.py", line 41, in _elevenlabs
     raise RuntimeError(f"ElevenLabs HTTP {response.status_code}: {response.text[:800]}")
-RuntimeError: ElevenLabs HTTP 401: {"detail":{"type":"invalid_request","code":"quota_exceeded","message":"This request exceeds your quota of 10000. You have 3 credits remaining, while 149 credits are required for this request.","status":"quota_exceeded","request_id":"5a588394942a0fe13de9c37777028f42"}}
+RuntimeError: ElevenLabs HTTP 401: {"detail":{"type":"invalid_request","code":"quota_exceeded","message":"This request exceeds your quota of 10000. You have 3 credits remaining, while 149 credits are required for this request.","status":"quota_exceeded","request_id":"02bec6c75497896998b0b19cf59f1314"}}
