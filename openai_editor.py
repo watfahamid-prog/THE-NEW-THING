@@ -23,6 +23,17 @@ INPUT JSON:\
         if isinstance(data,dict):
             if str(data.get("hook","")).strip(): storyboard["hook"]=str(data["hook"]).strip()
             if fmt!="ranking" and str(data.get("script","")).strip(): storyboard["script"]=str(data["script"]).strip()
+            if fmt=="ranking" and isinstance(data.get("reactions"),list):
+                by_rank={int(s.get("rank")):s for s in storyboard.get("scenes",[]) if str(s.get("rank","")).isdigit()}
+                for item in data["reactions"]:
+                    try: rank=int(item.get("rank"))
+                    except (TypeError,ValueError): continue
+                    if rank in by_rank and str(item.get("commentary","")).strip():
+                        by_rank[rank]["commentary"]=str(item["commentary"]).strip()
+                ordered=[by_rank[r] for r in sorted(by_rank,reverse=True)]
+                if len(ordered)==len(storyboard.get("scenes",[])):
+                    storyboard["scenes"]=ordered
+                    storyboard["script"]=str(storyboard.get("hook","")).strip()+" "+" ".join(str(s.get("commentary","")).strip() for s in ordered)
             print(f"[openai] storyboard refinement applied using {OPENAI_MODEL}.")
     except Exception as exc:
         print(f"[openai] refinement unavailable ({exc}); keeping original storyboard.")
