@@ -1,4 +1,4 @@
-ERROR: ElevenLabs HTTP 401: {"detail":{"type":"invalid_request","code":"quota_exceeded","message":"This request exceeds your quota of 10000. You have 3 credits remaining, while 149 credits are required for this request.","status":"quota_exceeded","request_id":"48b091739e06dc824cf91fc4554495b8"}}
+ERROR: ElevenLabs HTTP 401: {"detail":{"type":"invalid_request","code":"quota_exceeded","message":"This request exceeds your quota of 10000. You have 3 credits remaining, while 149 credits are required for this request.","status":"quota_exceeded","request_id":"35048939858a9ef95e4fe728fb72fa79"}}
 [topics] Gemini topic generation failed: 503 Server Error: Service Unavailable for url: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent
 [autopilot] YouTube signals: 20
 [autopilot] Gemini topic candidates: 7
@@ -6,7 +6,7 @@ ERROR: ElevenLabs HTTP 401: {"detail":{"type":"invalid_request","code":"quota_ex
 [autopilot] topic source: safe_fallback
 [config] ELEVENLABS_VOICE_ID not set; audio.py will auto-select a voice from ElevenLabs.
 [pipeline] started: Top 5 animals doing things that look almost human
-[storyboard] Ranking scene commentary missing; using deterministic ranking fallback.
+Gemini storyboard unavailable (503 Server Error: Service Unavailable for url: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent); using local fallback storyboard.
 [openai] refinement unavailable (429 Client Error: Too Many Requests for url: https://api.openai.com/v1/chat/completions); keeping original storyboard.
 [pipeline] storyboard ready: ranking / 5 scenes
 [tts] ElevenLabs auto-selected voice=CwhRBWXzGAHq8TQ4Fs17 name=Roger - Laid-Back, Casual, Resonant
@@ -23,4 +23,4 @@ Traceback (most recent call last):
     _elevenlabs(text,output_path)
   File "/home/runner/work/THE-NEW-THING/THE-NEW-THING/audio.py", line 41, in _elevenlabs
     raise RuntimeError(f"ElevenLabs HTTP {response.status_code}: {response.text[:800]}")
-RuntimeError: ElevenLabs HTTP 401: {"detail":{"type":"invalid_request","code":"quota_exceeded","message":"This request exceeds your quota of 10000. You have 3 credits remaining, while 149 credits are required for this request.","status":"quota_exceeded","request_id":"48b091739e06dc824cf91fc4554495b8"}}
+RuntimeError: ElevenLabs HTTP 401: {"detail":{"type":"invalid_request","code":"quota_exceeded","message":"This request exceeds your quota of 10000. You have 3 credits remaining, while 149 credits are required for this request.","status":"quota_exceeded","request_id":"35048939858a9ef95e4fe728fb72fa79"}}
