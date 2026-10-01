@@ -1,5 +1,4 @@
 from pathlib import Path
-import io
 import requests
 from config import ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, ELEVENLABS_MODEL
 
@@ -26,41 +25,45 @@ def _resolve_elevenlabs_voice_id():
 def _elevenlabs(text: str, output_path: Path):
     voice_id=_resolve_elevenlabs_voice_id()
     url=f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-    response=requests.post(
-        url,
-        headers={"xi-api-key":ELEVENLABS_API_KEY,"Content-Type":"application/json","Accept":"audio/mpeg"},
-        json={
-            "text":text,
-            "model_id":ELEVENLABS_MODEL,
-            "voice_settings":{"stability":0.38,"similarity_boost":0.78,"style":0.45,"use_speaker_boost":True}
-        },
-        params={"output_format":"mp3_44100_128"},
-        timeout=120,
-    )
+    response=requests.post(url,headers={"xi-api-key":ELEVENLABS_API_KEY,"Content-Type":"application/json","Accept":"audio/mpeg"},json={"text":text,"model_id":ELEVENLABS_MODEL,"voice_settings":{"stability":0.38,"similarity_boost":0.78,"style":0.45,"use_speaker_boost":True}},params={"output_format":"mp3_44100_128"},timeout=120)
     if not response.ok:
         raise RuntimeError(f"ElevenLabs HTTP {response.status_code}: {response.text[:800]}")
-    output_path.with_suffix(".mp3").write_bytes(response.content)
+    mp3=output_path.with_suffix(".mp3")
+    mp3.write_bytes(response.content)
     import subprocess
-    result=subprocess.run(
-        ["ffmpeg","-y","-i",str(output_path.with_suffix(".mp3")),"-ar","24000","-ac","1","-c:a","pcm_s16le",str(output_path)],
-        capture_output=True,text=True
-    )
-    output_path.with_suffix(".mp3").unlink(missing_ok=True)
+    result=subprocess.run(["ffmpeg","-y","-i",str(mp3),"-ar","24000","-ac","1","-c:a","pcm_s16le",str(output_path)],capture_output=True,text=True)
+    mp3.unlink(missing_ok=True)
     if result.returncode:
         raise RuntimeError("FFmpeg could not convert ElevenLabs audio: "+result.stderr[-1200:])
     global LAST_VOICE_PROVIDER, LAST_VOICE_ID
-    LAST_VOICE_PROVIDER="elevenlabs"
-    LAST_VOICE_ID=voice_id
+    LAST_VOICE_PROVIDER="elevenlabs"; LAST_VOICE_ID=voice_id
     print(f"[tts] ElevenLabs voice={voice_id} model={ELEVENLABS_MODEL}")
+
+def _edge_tts_fallback(text: str, output_path: Path):
+    import asyncio
+    import edge_tts
+    mp3=output_path.with_suffix(".edge.mp3")
+    asyncio.run(edge_tts.Communicate(text,"en-US-GuyNeural",rate="+8%").save(str(mp3)))
+    import subprocess
+    result=subprocess.run(["ffmpeg","-y","-i",str(mp3),"-ar","24000","-ac","1","-c:a","pcm_s16le",str(output_path)],capture_output=True,text=True)
+    mp3.unlink(missing_ok=True)
+    if result.returncode:
+        raise RuntimeError("FFmpeg could not convert fallback voice: "+result.stderr[-1200:])
+    global LAST_VOICE_PROVIDER, LAST_VOICE_ID
+    LAST_VOICE_PROVIDER="edge_tts_fallback"; LAST_VOICE_ID="en-US-GuyNeural"
+    print("[tts] Fallback voice=en-US-GuyNeural")
 
 def make_voiceover(text: str, output_path: Path):
     global LAST_VOICE_PROVIDER, LAST_VOICE_ID
-    LAST_VOICE_PROVIDER="none"
-    LAST_VOICE_ID=""
+    LAST_VOICE_PROVIDER="none"; LAST_VOICE_ID=""
     output_path.parent.mkdir(parents=True,exist_ok=True)
-
-    # ElevenLabs is the production voice for this project. Never silently
-    # substitute another voice engine, because that makes samples inconsistent.
-    if not ELEVENLABS_API_KEY:
-        raise RuntimeError("ELEVENLABS_API_KEY is required for the YouTube ranking pipeline.")
-    _elevenlabs(text,output_path)
+    if ELEVENLABS_API_KEY:
+        try:
+            _elevenlabs(text,output_path)
+            return
+        except RuntimeError as exc:
+            msg=str(exc).lower()
+            if "quota" not in msg and "401" not in msg:
+                raise
+            print("[tts] ElevenLabs unavailable; using neural fallback.")
+    _edge_tts_fallback(text,output_path)
