@@ -113,7 +113,7 @@ def apply_tier_overlay(video: Path, storyboard: dict, output: Path, total_durati
     vf=f"ass=filename={ass_path.resolve()}"
     subprocess.run([
         "ffmpeg","-y","-i",str(video),"-vf",vf,
-        "-c:v","libx264","-preset","veryfast","-crf","20",
+        "-c:v","libx264","-preset","ultrafast","-crf","21",
         "-pix_fmt","yuv420p","-an",str(output)
     ],check=True)
 
@@ -204,12 +204,15 @@ def apply_advanced_edit(video: Path, storyboard: dict, output: Path):
         width,height=(int(x) for x in probe.split("x",1))
     except (ValueError,TypeError):
         width,height=1920,1080
+    # Avoid zoompan here: it is expensive on GitHub-hosted runners and can
+    # create needless frame expansion. Use a fast, deterministic finishing
+    # filter instead while keeping the footage lively.
     vf=(
-        "scale=iw*1.045:ih*1.045,"
-        "crop=iw/1.045:ih/1.045,"
-        f"zoompan=z='min(zoom+0.0009,1.045)':d=1:s={width}x{height}:fps=30,"
-        "eq=contrast=1.045:saturation=1.08:brightness=0.006,"
-        "vignette=PI/5"
+        "scale=iw*1.035:ih*1.035,"
+        "crop=iw/1.035:ih/1.035,"
+        "eq=contrast=1.04:saturation=1.07:brightness=0.005,"
+        "vignette=PI/5,"
+        "fps=30"
     )
     # Keep the source audio untouched; this is a visual-only pass.
     subprocess.run([
