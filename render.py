@@ -114,7 +114,7 @@ def apply_tier_overlay(video: Path, storyboard: dict, output: Path, total_durati
     subprocess.run([
         "ffmpeg","-y","-i",str(video),"-vf",vf,
         "-c:v","libx264","-preset","ultrafast","-crf","21",
-        "-pix_fmt","yuv420p","-an",str(output)
+        "-pix_fmt","yuv420p","-map","0:v:0","-map","0:a:0?","-c:a","aac","-b:a","160k","-af","aresample=async=1",str(output)
     ],check=True)
 
 def concat_scenes(scenes: list[Path], output: Path, width: int = 1080, height: int = 1920):
@@ -181,7 +181,7 @@ def apply_ranking_overlay(video: Path, storyboard: dict, output: Path, total_dur
     subprocess.run([
         "ffmpeg","-y","-i",str(video),"-vf",vf,
         "-c:v","libx264","-preset","medium","-crf","18",
-        "-pix_fmt","yuv420p","-an",str(output)
+        "-pix_fmt","yuv420p","-map","0:v:0","-map","0:a:0?","-c:a","aac","-b:a","160k","-af","aresample=async=1",str(output)
     ],check=True)
 
 
@@ -219,7 +219,7 @@ def apply_advanced_edit(video: Path, storyboard: dict, output: Path):
     subprocess.run([
         "ffmpeg","-y","-i",str(video),"-vf",vf,
         "-c:v","libx264","-preset","veryfast","-crf","20",
-        "-pix_fmt","yuv420p","-an",str(output)
+        "-pix_fmt","yuv420p","-map","0:v:0","-map","0:a:0?","-c:a","aac","-b:a","160k","-af","aresample=async=1",str(output)
     ],check=True)
 
 def final_master(video: Path,output: Path):
@@ -228,8 +228,8 @@ def final_master(video: Path,output: Path):
     subprocess.run([
         "ffmpeg","-y","-i",str(video),
         "-vf","eq=contrast=1.045:saturation=1.07:brightness=0.008,unsharp=5:5:0.35,fps=30",
-        "-c:v","libx264","-preset","veryfast","-crf","19","-threads","2",
-        "-c:a","aac","-b:a","160k","-movflags","+faststart",str(output)
+        "-map","0:v:0","-map","0:a:0?","-c:v","libx264","-preset","veryfast","-crf","19","-threads","2",
+        "-c:a","aac","-b:a","160k","-af","aresample=async=1","-movflags","+faststart",str(output)
     ],check=True)
 
 
