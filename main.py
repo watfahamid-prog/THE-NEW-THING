@@ -53,6 +53,8 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
     voice=root/"voice.wav"
     make_voiceover(narration_text,voice)
     narration_duration=media_duration(voice)
+    if __import__("audio").LAST_VOICE_PROVIDER != "elevenlabs":
+        raise RuntimeError("Production contract failed: ElevenLabs voice was not used.")
 
     if storyboard.get("format")=="ranking":
         # Fit the entire ElevenLabs narration instead of truncating it to 5s x N.
@@ -99,6 +101,12 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
     expected=(1920,1080) if storyboard.get("format") in ("longform","tierlist") else (1080,1920)
     if (qc["width"],qc["height"])!=expected:
         raise RuntimeError(f"Final video failed {expected[0]}x{expected[1]} QC: {qc}")
+    if storyboard.get("format")=="ranking":
+        ranks=[int(s.get("rank")) for s in scene_meta if str(s.get("rank","")).isdigit()]
+        if ranks != sorted(ranks, reverse=True):
+            raise RuntimeError(f"Ranking playback order failed: {ranks}")
+        if len(set(ranks)) != len(ranks):
+            raise RuntimeError(f"Ranking contains duplicate ranks: {ranks}")
 
     history["video_ids"]=sorted(set(history.get("video_ids",[]))|used_video_ids)
     history["video_urls"]=sorted(set(history.get("video_urls",[]))|{str(s.get("pexels_url")) for s in scene_meta if s.get("pexels_url")})
