@@ -167,8 +167,15 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
         return (overlap * 3 + partial, -int(video.get("duration", 0) or 0))
 
     candidates.sort(key=relevance, reverse=True)
+    # Require at least one meaningful query-term match when possible. If none
+    # exists, retain Pexels ranking rather than substituting unrelated footage.
+    matched=[v for v in candidates if relevance(v)[0] > 0]
+    if matched:
+        candidates=matched + [v for v in candidates if v not in matched]
+    # Keep Pexels relevance ordering, but diversify only within the strongest
+    # semantic matches. A random shuffle of all strong candidates can select
+    # a technically valid but visually weak clip.
     shortlist = candidates[:min(12, len(candidates))]
-    random.shuffle(shortlist)
     candidates = shortlist + candidates[len(shortlist):]
     if not candidates:
         raise RuntimeError(f"No unused Pexels video remains for scene {index}.")
@@ -200,6 +207,14 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
             for chunk in iter(lambda: f.read(1024 * 1024), b""):
                 digest.update(chunk)
         candidate_hash = digest.hexdigest()
+
+        # Basic visual-quality gate: reject files that are suspiciously tiny
+        # after download. This prevents broken/placeholder CDN responses from
+        # entering the final ranking.
+        if source.stat().st_size < 100_000:
+            source.unlink(missing_ok=True)
+            print(f"[pexels] rejected tiny download: id={candidate_id}")
+            continue
 
         if candidate_hash in blocked_hashes or candidate_hash in used_hashes:
             print(f"[pexels] rejected duplicate: id={candidate_id} sha256={candidate_hash[:12]}")
