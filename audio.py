@@ -63,7 +63,10 @@ def make_voiceover(text: str, output_path: Path):
             return
         except RuntimeError as exc:
             msg=str(exc).lower()
-            if "quota" not in msg and "401" not in msg:
-                raise
-            print("[tts] ElevenLabs unavailable; using neural fallback.")
+            # ElevenLabs remains mandatory for production. A transient provider
+            # error is allowed one short retry, but the workflow must not silently
+            # downgrade to Edge-TTS and claim the production contract was met.
+            if "quota" in msg or "401" in msg:
+                raise RuntimeError("ElevenLabs production voice unavailable: "+str(exc))
+            raise
     _edge_tts_fallback(text,output_path)
