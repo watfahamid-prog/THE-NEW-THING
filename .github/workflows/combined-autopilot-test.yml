@@ -61,6 +61,35 @@ jobs:
           set -o pipefail
           python main.py --autopilot 2>&1 | tee autopilot.log
 
+      - name: Validate final ranked video
+        run: |
+          python - <<'PY'
+          import glob, json, os, subprocess
+          manifests = glob.glob("output/**/manifest.json", recursive=True)
+          videos = glob.glob("output/**/final.mp4", recursive=True)
+          if not manifests or not videos:
+              raise SystemExit("QC FAIL: final video or manifest missing")
+          manifest = max(manifests, key=os.path.getmtime)
+          video = max(videos, key=os.path.getmtime)
+          m = json.load(open(manifest, encoding="utf-8"))
+          if m.get("format") != "ranking":
+              raise SystemExit("QC FAIL: output is not ranking format")
+          entries = m.get("ranking_entries", [])
+          scenes = m.get("scenes", [])
+          if len(entries) != len(scenes) or not 5 <= len(entries) <= 10:
+              raise SystemExit("QC FAIL: ranking entry/scene count is invalid")
+          ranks = [int(e.get("rank", 0)) for e in entries]
+          if ranks != list(range(1, len(entries) + 1)):
+              raise SystemExit("QC FAIL: ranking order is invalid")
+          ids = [str(s.get("pexels_id", "")) for s in scenes if s.get("pexels_id")]
+          if len(ids) != len(set(ids)):
+              raise SystemExit("QC FAIL: duplicate Pexels IDs")
+          probe = subprocess.run(["ffprobe","-v","error","-select_streams","a:0","-show_entries","stream=codec_name","-of","default=nw=1:nk=1",video], capture_output=True, text=True)
+          if not probe.stdout.strip():
+              raise SystemExit("QC FAIL: final video has no audio stream")
+          print("QC PASS:", len(entries), "ranks,", probe.stdout.strip(), "audio")
+          PY
+
       - name: Persist histories and diagnostics
         if: always()
         run: |
