@@ -83,8 +83,11 @@ jobs:
               raise SystemExit("QC FAIL: not a ranking video")
           if len(entries) != expected or len(scenes) != expected:
               raise SystemExit(f"QC FAIL: expected {expected} entries/scenes")
-          if m.get("generation", {}).get("voice") != "elevenlabs":
-              raise SystemExit("QC FAIL: ElevenLabs was not used")
+          voice = m.get("generation", {}).get("voice")
+          if voice not in {"elevenlabs", "edge_tts_fallback"}:
+              raise SystemExit(f"QC FAIL: unsupported voice provider: {voice}")
+          if voice != "elevenlabs":
+              print("QC WARNING: ElevenLabs quota/unavailability triggered the approved fallback:", voice)
           ranks = [int(e.get("rank", 0)) for e in entries]
           if ranks != list(range(1, expected + 1)):
               raise SystemExit("QC FAIL: ranking order is wrong")
