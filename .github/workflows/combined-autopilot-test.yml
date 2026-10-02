@@ -41,6 +41,7 @@ jobs:
         run: |
           test -n "$PEXELS_API_KEY" || { echo "::error::PEXELS_API_KEY is missing"; exit 1; }
           test -n "$ELEVENLABS_API_KEY" || { echo "::error::ELEVENLABS_API_KEY is missing"; exit 1; }
+          test -n "$ELEVENLABS_VOICE_ID" || { echo "::warning::ELEVENLABS_VOICE_ID is not set; the app will auto-select a voice." }
 
       - name: Generate one ranked YouTube Short
         env:
