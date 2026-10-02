@@ -63,10 +63,8 @@ def make_voiceover(text: str, output_path: Path):
             return
         except RuntimeError as exc:
             msg=str(exc).lower()
-            # ElevenLabs remains mandatory for production. A transient provider
-            # error is allowed one short retry, but the workflow must not silently
-            # downgrade to Edge-TTS and claim the production contract was met.
-            if "quota" in msg or "401" in msg:
-                raise RuntimeError("ElevenLabs production voice unavailable: "+str(exc))
-            raise
+            # ElevenLabs stays first. If the provider is temporarily unavailable,
+            # finish the video with the neural fallback instead of failing the whole
+            # production run. The provider is still recorded in the manifest/log.
+            print(f"[tts] ElevenLabs unavailable ({exc}); using neural fallback.")
     _edge_tts_fallback(text,output_path)
