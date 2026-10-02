@@ -15,7 +15,7 @@ jobs:
   autopilot:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     permissions:
       contents: write
     steps:
@@ -38,10 +38,11 @@ jobs:
         env:
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID || secrets.ELEVENLABS_VOICE_ID_1 }}
         run: |
-          test -n "$PEXELS_API_KEY" || { echo "::error::PEXELS_API_KEY is missing"; exit 1; }
-          test -n "$ELEVENLABS_API_KEY" || { echo "::error::ELEVENLABS_API_KEY is missing"; exit 1; }
-          test -n "$ELEVENLABS_VOICE_ID" || { echo "::warning::ELEVENLABS_VOICE_ID is not set; the app will auto-select a voice." }
+          if [ -z "$PEXELS_API_KEY" ]; then echo "::error::PEXELS_API_KEY is missing"; exit 1; fi
+          if [ -z "$ELEVENLABS_API_KEY" ]; then echo "::warning::ELEVENLABS_API_KEY is missing; fallback TTS will be used."; fi
+          if [ -z "$ELEVENLABS_VOICE_ID" ]; then echo "::warning::ELEVENLABS_VOICE_ID is not set; the app will auto-select a voice."; fi
 
       - name: Generate one ranked YouTube Short
         env:
