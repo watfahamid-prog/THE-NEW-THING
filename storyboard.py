@@ -357,6 +357,20 @@ Return JSON keys: title, hook, script, format, ranking_entries, scenes."""
             clean=sorted({x["rank"]:x for x in clean}.values(),key=lambda x:x["rank"])
             if len(clean)!=count or len(normalized)!=count:
                 return fallback(topic,hook_override)
+            # Reject AI-generated searches that are technically valid but too generic.
+            # A ranking needs a different concrete action/subject for every rank.
+            generic_phrases=("funny moment","best moment","surprising reaction","unexpected moment","caught on camera","standout moment","variation")
+            generic_query_count=0
+            topic_lower=re.sub(r"\\s+"," ",topic.lower()).strip()
+            for sc in normalized:
+                q=" ".join(str(x) for x in (sc.get("visual_search_queries") or [])).lower()
+                if any(p in q for p in generic_phrases) or (topic_lower and topic_lower in q):
+                    generic_query_count += 1
+            generic_names={"the opening moment","the reaction","the unexpected turn","the big moment","the standout","the funny moment","the fail","the surprise","the best moment"}
+            generic_name_count=sum(1 for e in clean if str(e.get("name","")).strip().lower() in generic_names)
+            if generic_query_count >= max(2,count//2) or generic_name_count >= max(2,count//2):
+                print("[storyboard] ranking visuals were too generic; using concrete deterministic ranking fallback.")
+                return fallback(topic,hook_override)
             if any(not str(s.get("commentary","")).strip() for s in normalized):
                 print("[storyboard] Ranking scene commentary missing; using deterministic ranking fallback.")
                 return fallback(topic,hook_override)
