@@ -23,6 +23,24 @@ def _query_variants(topic: str, scene: dict) -> list[str]:
     if explicit:
         usable=[re.sub(r"\s+", " ", str(x)).strip() for x in explicit if str(x).strip()]
         if usable:
+            # Gemini sometimes gives broad animal queries that resolve to the
+            # same stock clip. Expand them into concrete actions.
+            expanded=[]
+            for q in usable:
+                ql=q.lower()
+                if "cat" in ql and ("human" in ql or "standing" in ql):
+                    expanded += ["cat standing on two legs","cat walking upright"]
+                elif "dog" in ql and ("human" in ql or "sitting" in ql):
+                    expanded += ["dog sitting upright like a person","dog standing on two legs"]
+                elif "monkey" in ql:
+                    expanded += ["monkey using hands eating","monkey holding object"]
+                elif "animal" in ql and ("object" in ql or "human" in ql):
+                    expanded += ["animal using object with paws","animal holding object"]
+                elif "animal" in ql and ("walking" in ql or "human" in ql):
+                    expanded += ["animal walking on two legs","animal standing upright"]
+                else:
+                    expanded.append(q)
+            usable=list(dict.fromkeys(expanded))
             return usable[:3]
     topic_l = topic.lower()
     # Ranking topics need footage of the actual subject, not generic stock
@@ -122,6 +140,36 @@ def _visual_fingerprint(path: Path, target_w: int = VIDEO_WIDTH, target_h: int =
     return [x for frame in frames for x in frame]
 
 def _fingerprint_distance(a: list[float], b: list[float]) -> float:
+
+def _dhash_frames(path: Path) -> list[list[bool]]:
+    """Three-point dHash matching the workflow QC gate."""
+    hashes=[]
+    for fraction in (0.25, 0.50, 0.75):
+        try:
+            dur=float(subprocess.check_output([
+                "ffprobe","-v","error","-show_entries","format=duration",
+                "-of","csv=p=0",str(path)
+            ], text=True).strip())
+            raw=subprocess.check_output([
+                "ffmpeg","-hide_banner","-loglevel","error",
+                "-ss",str(max(0.0,dur*fraction)),"-i",str(path),
+                "-frames:v","1","-vf","scale=33:32,format=gray",
+                "-f","rawvideo","pipe:1"
+            ], timeout=20)
+        except Exception as exc:
+            print(f"[pexels] dHash unavailable: {exc}")
+            return []
+        if len(raw) < 33*32:
+            return []
+        bits=[]
+        for y in range(32):
+            row=raw[y*33:(y+1)*33]
+            bits.extend(row[x] < row[x+1] for x in range(32))
+        hashes.append(bits)
+    return hashes
+
+def _dhash_distance(a: list[bool], b: list[bool]) -> int:
+    return sum(x != y for x,y in zip(a,b))
     if not a or not b:
         return 1.0
     n=min(len(a),len(b))
@@ -274,12 +322,31 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
             source.unlink(missing_ok=True)
             continue
 
+        # Exact three-point dHash rule used by final workflow QC.
+        candidate_dhashes=_dhash_frames(source)
+        duplicate_visual=False
+        if candidate_dhashes:
+            for old_dhashes in getattr(make_scene, "_used_dhashes", []):
+                if len(old_dhashes) == 3:
+                    ds=[_dhash_distance(candidate_dhashes[k], old_dhashes[k]) for k in range(3)]
+                    if sum(d < 24 for d in ds) >= 2:
+                        print(f"[pexels] rejected dHash duplicate: id={candidate_id} distances={ds}")
+                        duplicate_visual=True
+                        break
+        if duplicate_visual:
+            source.unlink(missing_ok=True)
+            continue
+
         video = candidate
         source_sha256 = candidate_hash
         used_video_ids.add(candidate_id)
         used_hashes.add(candidate_hash)
         if fingerprint:
             used_visual_fingerprints.append(fingerprint)
+        if candidate_dhashes:
+            if not hasattr(make_scene, "_used_dhashes"):
+                make_scene._used_dhashes = []
+            make_scene._used_dhashes.append(candidate_dhashes)
         print(f"[pexels] selected new clip: id={candidate_id} sha256={candidate_hash[:12]} fingerprint_frames={len(fingerprint)//576 if fingerprint else 0}")
         break
 
