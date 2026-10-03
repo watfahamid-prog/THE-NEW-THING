@@ -408,9 +408,19 @@ Return JSON keys: title, hook, script, format, ranking_entries, scenes."""
             if generic_query_count >= max(2,count//2) or generic_name_count >= max(2,count//2):
                 print("[storyboard] ranking visuals were too generic; using concrete deterministic ranking fallback.")
                 return fallback(topic,hook_override)
-            if any(not str(s.get("commentary","")).strip() for s in normalized):
-                print("[storyboard] Ranking scene commentary missing; using deterministic ranking fallback.")
-                return fallback(topic,hook_override)
+            # Preserve a valid Gemini ranking storyboard even if one or more
+            # commentary fields are missing. The footage searches and ranked
+            # entries are much more valuable than throwing the whole storyboard
+            # away and falling back to generic stock queries.
+            for s in normalized:
+                if not str(s.get("commentary","")).strip():
+                    rank=int(s.get("rank",0) or 0)
+                    name=str(s.get("name") or "").strip()
+                    s["commentary"] = (
+                        f"{name} is what makes this one stand out."
+                        if name else
+                        "This moment is what makes this entry stand out."
+                    )
             by_rank={int(s.get("rank",0)):s for s in normalized}
             if any(rank not in by_rank for rank in range(1,count+1)):
                 return fallback(topic,hook_override)
