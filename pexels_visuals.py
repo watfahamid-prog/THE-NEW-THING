@@ -97,15 +97,19 @@ def save_persistent_history(history: dict) -> None:
         "sha256": sorted(set(map(str, history.get("sha256", [])))),
     }, indent=2), encoding="utf-8")
 
-def _visual_fingerprint(path: Path) -> list[float]:
-    """Create a cheap content fingerprint from several frames of a downloaded clip.
-    This catches different Pexels IDs that are visually the same stock shot."""
+def _visual_fingerprint(path: Path, target_w: int = VIDEO_WIDTH, target_h: int = VIDEO_HEIGHT) -> list[float]:
+    """Fingerprint footage after the SAME vertical crop used in the final video.
+    Comparing raw source frames missed clips that became nearly identical after
+    the 9:16 crop."""
     try:
-        raw = subprocess.check_output([
+        vf=(
+            f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,"
+            f"crop={target_w}:{target_h},scale=16:16,format=gray"
+        )
+        raw=subprocess.check_output([
             "ffmpeg","-hide_banner","-loglevel","error","-i",str(path),
-            "-vf","fps=1,scale=16:16,format=gray",
-            "-frames:v","5","-f","rawvideo","pipe:1"
-        ], timeout=25)
+            "-vf",vf,"-frames:v","5","-f","rawvideo","pipe:1"
+        ],timeout=25)
     except Exception:
         return []
     frame_size=16*16
@@ -115,7 +119,6 @@ def _visual_fingerprint(path: Path) -> list[float]:
         if len(frame)!=frame_size:
             continue
         mean=sum(frame)/frame_size
-        # Normalize brightness so the fingerprint focuses more on structure.
         frames.append([((b-mean)/128.0) for b in frame])
     return [x for frame in frames for x in frame]
 
@@ -253,8 +256,8 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
             source.unlink(missing_ok=True)
             continue
 
-        fingerprint=_visual_fingerprint(source)
-        if fingerprint and any(_fingerprint_distance(fingerprint, old_fp) < 0.055 for old_fp in used_visual_fingerprints):
+        fingerprint=_visual_fingerprint(source,target_w,target_h)
+        if fingerprint and any(_fingerprint_distance(fingerprint, old_fp) < 0.070 for old_fp in used_visual_fingerprints):
             print(f"[pexels] rejected visually duplicate clip: id={candidate_id}")
             source.unlink(missing_ok=True)
             continue
