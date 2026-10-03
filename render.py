@@ -25,6 +25,8 @@ def _ass_time(seconds: float) -> str:
 
 
 def _write_ranking_ass(path: Path, title: str, entries: list[dict], per_scene: float, total_duration: float):
+    """Render a clean ranking overlay: short title + only the active rank/item.
+    The old persistent 5-10 row leaderboard covered too much of the footage."""
     path.parent.mkdir(parents=True,exist_ok=True)
     lines=[
         "[Script Info]",
@@ -35,31 +37,28 @@ def _write_ranking_ass(path: Path, title: str, entries: list[dict], per_scene: f
         "",
         "[V4+ Styles]",
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-        "Style: Title,DejaVu Sans,52,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,-1,0,0,0,100,100,0,0,1,2,2,7,62,40,40,1",
-        "Style: Rank,DejaVu Sans,64,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,-1,0,0,0,100,100,0,0,1,2,2,7,62,40,40,1",
-        "Style: Name,DejaVu Sans,31,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,0,0,0,0,100,100,0,0,1,2,2,7,145,40,40,1",
-        "Style: ActiveRank,DejaVu Sans,72,&H0000FFFF,&H0000FFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,3,7,58,40,40,1",
-        "Style: ActiveName,DejaVu Sans,34,&H0000FFFF,&H0000FFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,3,7,141,40,40,1",
+        "Style: Title,DejaVu Sans,42,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,-1,0,0,0,100,100,0,0,1,2,1,8,50,40,35,1",
+        "Style: ActiveRank,DejaVu Sans,76,&H0000FFFF,&H0000FFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,4,2,8,50,40,0,1",
+        "Style: ActiveName,DejaVu Sans,38,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,-1,0,0,0,100,100,0,0,1,3,2,8,50,40,0,1",
         "",
         "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ]
-    display_title = f"TOP {len(entries)}: {title or 'MOMENTS'}"
-    lines.append(f"Dialogue: 0,0:00:00.00,{_ass_time(total_duration)},Title,,0,0,0,,{_ass_escape(display_title)}")
-    for pos,entry in enumerate(entries):
+    clean_title=str(title or "MOMENTS").strip()
+    import re
+    clean_title=re.sub(r"^top\s*\d+\s*[:\-]?\s*","",clean_title,flags=re.I).strip()
+    display_title=f"TOP {len(entries)}: {clean_title.upper()}"
+    # Only show the full title briefly; keep the footage clean afterward.
+    lines.append(f"Dialogue: 0,0:00:00.00,{_ass_time(min(total_duration,2.4))},Title,,0,0,0,,{_ass_escape(display_title)}")
+    for pos,entry in enumerate(sorted(entries,key=lambda x:int(x.get("rank",0)),reverse=True)):
         rank=int(entry.get("rank",pos+1))
         name=_ass_escape(entry.get("name") or f"Rank {rank}")
-        row_height=max(120,min(205,(1920-330)/max(len(entries),1)))
-        y=250+pos*row_height
-        lines.append(f"Dialogue: 0,0:00:00.00,{_ass_time(total_duration)},Rank,,0,0,0,,{{\\pos(62,{y})}}{rank}")
-        lines.append(f"Dialogue: 0,0:00:00.00,{_ass_time(total_duration)},Name,,0,0,0,,{{\\pos(145,{y+12})}}{name}")
         scene_index=max(0,len(entries)-rank)
-        start=scene_index*per_scene
-        end=min(total_duration,(scene_index+1)*per_scene)
-        lines.append(f"Dialogue: 1,{_ass_time(start)},{_ass_time(end)},ActiveRank,,0,0,0,,{{\\pos(58,{y-4})}}{rank}")
-        lines.append(f"Dialogue: 1,{_ass_time(start)},{_ass_time(end)},ActiveName,,0,0,0,,{{\\pos(141,{y+9})}}{name}")
+        start_time=scene_index*per_scene
+        end_time=min(total_duration,(scene_index+1)*per_scene)
+        lines.append(f"Dialogue: 1,{_ass_time(start_time)},{_ass_time(end_time)},ActiveRank,,0,0,0,,{{\\pos(540,145)}}#{rank}")
+        lines.append(f"Dialogue: 1,{_ass_time(start_time)},{_ass_time(end_time)},ActiveName,,0,0,0,,{{\\pos(540,235)}}{name}")
     path.write_text("\n".join(lines)+"\n",encoding="utf-8")
-
 
 def _write_tier_ass(path: Path, title: str, entries: list[dict], per_scene: float, total_duration: float):
     path.parent.mkdir(parents=True,exist_ok=True)
