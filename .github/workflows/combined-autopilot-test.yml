@@ -87,6 +87,28 @@ jobs:
           probe = subprocess.run(["ffprobe","-v","error","-select_streams","a:0","-show_entries","stream=codec_name","-of","default=nw=1:nk=1",video], capture_output=True, text=True)
           if not probe.stdout.strip():
               raise SystemExit("QC FAIL: final video has no audio stream")
+          # Hard visual-diversity gate: unique IDs are not enough if the actual
+          # 9:16 footage looks nearly identical.
+          duration = float(subprocess.check_output(["ffprobe","-v","error","-show_entries","format=duration","-of","csv=p=0",video], text=True).strip())
+          def fp_at(t):
+              raw = subprocess.check_output([
+                  "ffmpeg","-hide_banner","-loglevel","error","-ss",str(max(0,t)),
+                  "-i",video,"-vf","scale=16:16,format=gray","-frames:v","1","-f","rawvideo","pipe:1"
+              ], timeout=20)
+              if len(raw) < 256:
+                  return None
+              vals=list(raw[:256])
+              mean=sum(vals)/256.0
+              return [(v-mean)/128.0 for v in vals]
+          fps=[fp_at((i+0.5)*(duration/len(scenes))) for i in range(len(scenes))]
+          for i in range(len(fps)):
+              for j in range(i+1,len(fps)):
+                  if fps[i] is None or fps[j] is None:
+                      continue
+                  dist=sum(abs(a-b) for a,b in zip(fps[i],fps[j]))/(len(fps[i])*2.0)
+                  if dist < 0.070:
+                      raise SystemExit(f"QC FAIL: ranks {i+1} and {j+1} are visually too similar (distance={dist:.3f})")
+          print("Visual diversity QC PASS")
           print("QC PASS:", len(entries), "ranks,", probe.stdout.strip(), "audio")
           PY
 
