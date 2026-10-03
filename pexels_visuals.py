@@ -48,7 +48,7 @@ def _query_variants(topic: str, scene: dict) -> list[str]:
     useful = [w for w in words if w not in stop and len(w) > 2]
     # A concrete topic is safer than boilerplate prompt words.
     if topic.strip():
-        return re.sub(r"\\s+", " ", topic).strip()[:120]
+        return [re.sub(r"\\s+", " ", topic).strip()[:120]]
     base = " ".join(useful[:7])
     return [base or "funny animal moment"]
 
@@ -75,8 +75,8 @@ def _download(url: str, path: Path):
             last_error = exc
             path.unlink(missing_ok=True)
             if attempt < 4:
-                    import time
-                    time.sleep(2 * (attempt + 1))
+                import time
+                time.sleep(2 * (attempt + 1))
     raise RuntimeError(f"Failed to download Pexels video after 5 attempts: {last_error}")
 
 def load_persistent_history() -> dict:
@@ -153,26 +153,29 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
             page_params=dict(params, page=page)
             r = requests.get(API, headers=headers, params=page_params, timeout=30)
             if r.status_code >= 500:
-            # Retry the SAME semantic query/page. Never substitute unrelated footage.
                 recovered=False
                 for attempt in range(3):
-                import time
-                time.sleep(2 * (attempt + 1))
+                    import time
+                    time.sleep(2 * (attempt + 1))
                     rr=requests.get(API, headers=headers, params=page_params, timeout=30)
                     if rr.ok:
                         page_videos=rr.json().get("videos", [])
                         for v in page_videos:
-                            if str(v.get("id","")) not in seen_api_ids:
-                                videos.append(v); seen_api_ids.add(str(v.get("id","")))
+                            vid=str(v.get("id",""))
+                            if vid and vid not in seen_api_ids:
+                                videos.append(v)
+                                seen_api_ids.add(vid)
                         recovered=True
                         break
-            if not recovered:
-                continue
+                if not recovered:
+                    continue
             else:
                 r.raise_for_status()
                 for v in r.json().get("videos", []):
-                    if str(v.get("id","")) not in seen_api_ids:
-                        videos.append(v); seen_api_ids.add(str(v.get("id","")))
+                    vid=str(v.get("id",""))
+                    if vid and vid not in seen_api_ids:
+                        videos.append(v)
+                        seen_api_ids.add(vid)
     if not videos:
         raise RuntimeError(f"No Pexels video found for queries: {queries}")
 
