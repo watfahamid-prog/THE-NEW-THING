@@ -94,6 +94,34 @@ jobs:
           ids = [str(s.get("pexels_id", "")) for s in scenes if s.get("pexels_id")]
           if len(ids) != len(set(ids)):
               raise SystemExit("QC FAIL: duplicate Pexels clip IDs inside sample")
+          # Visual diversity QC: compare normalized frames from each ranked segment.
+          # Different Pexels IDs are not enough if the clips look the same after 9:16 crop.
+          import subprocess, tempfile
+          final_paths = glob.glob("output/**/final.mp4", recursive=True)
+          final_path = max(final_paths, key=os.path.getmtime) if final_paths else None
+          if not final_path:
+              raise SystemExit("QC FAIL: final.mp4 missing")
+          duration = float(subprocess.check_output(["ffprobe","-v","error","-show_entries","format=duration","-of","csv=p=0",final_path], text=True).strip())
+          import numpy as np
+          def fp_at(t):
+              raw = subprocess.check_output([
+                  "ffmpeg","-hide_banner","-loglevel","error","-ss",str(max(0,t)),
+                  "-i",final_path,"-vf","scale=16:16,format=gray","-frames:v","1","-f","rawvideo","pipe:1"
+              ], timeout=20)
+              if len(raw) < 256: return None
+              a=np.frombuffer(raw[:256],dtype=np.uint8).astype(float)
+              return (a-a.mean())/128.0
+          fps=[]
+          for i in range(expected):
+              t=(i+0.5)*(duration/expected)
+              f=fp_at(t)
+              if f is not None: fps.append(f)
+          for i in range(len(fps)):
+              for j in range(i+1,len(fps)):
+                  dist=float(np.mean(np.abs(fps[i]-fps[j]))/2.0)
+                  if dist < 0.070:
+                      raise SystemExit(f"QC FAIL: ranks {i+1} and {j+1} are visually too similar (distance={dist:.3f})")
+          print("Visual diversity QC PASS")
           print("QC PASS")
           PY
 
