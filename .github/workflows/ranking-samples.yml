@@ -103,25 +103,21 @@ jobs:
           import subprocess, io
           from PIL import Image
           final_path = max(glob.glob("output/**/final.mp4", recursive=True), key=os.path.getmtime)
+          duration = float(subprocess.check_output(["ffprobe","-v","error","-show_entries","format=duration","-of","csv=p=0",final_path], text=True).strip())
           def dhash(path, t):
               raw=subprocess.check_output([
                   "ffmpeg","-hide_banner","-loglevel","error","-ss",str(max(0,t)),
                   "-i",path,"-frames:v","1","-f","image2pipe","-vcodec","png","pipe:1"
               ],timeout=20)
               im=Image.open(io.BytesIO(raw)).convert("L").resize((33,32))
-              px=list(im.getdata())
-              bits=[]
+              px=list(im.getdata()); bits=[]
               for y in range(32):
                   row=px[y*33:(y+1)*33]
                   bits.extend(row[x] < row[x+1] for x in range(32))
               return bits
           scene_dur=duration/expected
-          fps=[]
-          for i in range(expected):
-              base=i*scene_dur
-              fps.append([dhash(final_path,base+scene_dur*x) for x in (0.25,0.50,0.75)])
-          def hamming(a,b):
-              return sum(x!=y for x,y in zip(a,b))
+          fps=[[dhash(final_path,i*scene_dur+scene_dur*x) for x in (0.25,0.50,0.75)] for i in range(expected)]
+          def hamming(a,b): return sum(x!=y for x,y in zip(a,b))
           for i in range(expected):
               for j in range(i+1,expected):
                   ds=[hamming(fps[i][k],fps[j][k]) for k in range(3)]
