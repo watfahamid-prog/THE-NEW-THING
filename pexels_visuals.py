@@ -5,6 +5,7 @@ import requests
 import json
 import hashlib
 import random
+import math
 
 HISTORY_PATH = Path("data/pexels_history.json")
 
@@ -96,13 +97,44 @@ def save_persistent_history(history: dict) -> None:
         "sha256": sorted(set(map(str, history.get("sha256", [])))),
     }, indent=2), encoding="utf-8")
 
-def make_scene(topic: str, scene: dict, index: int, output: Path, duration: float | None = None, used_video_ids: set | None = None, blocked_video_ids: set | None = None, used_hashes: set | None = None, blocked_hashes: set | None = None):
+def _visual_fingerprint(path: Path) -> list[float]:
+    """Create a cheap content fingerprint from several frames of a downloaded clip.
+    This catches different Pexels IDs that are visually the same stock shot."""
+    try:
+        raw = subprocess.check_output([
+            "ffmpeg","-hide_banner","-loglevel","error","-i",str(path),
+            "-vf","fps=1,scale=16:16,format=gray",
+            "-frames:v","5","-f","rawvideo","pipe:1"
+        ], timeout=25)
+    except Exception:
+        return []
+    frame_size=16*16
+    frames=[]
+    for i in range(0,len(raw)-frame_size+1,frame_size):
+        frame=raw[i:i+frame_size]
+        if len(frame)!=frame_size:
+            continue
+        mean=sum(frame)/frame_size
+        # Normalize brightness so the fingerprint focuses more on structure.
+        frames.append([((b-mean)/128.0) for b in frame])
+    return [x for frame in frames for x in frame]
+
+def _fingerprint_distance(a: list[float], b: list[float]) -> float:
+    if not a or not b:
+        return 1.0
+    n=min(len(a),len(b))
+    if not n:
+        return 1.0
+    return sum(abs(a[i]-b[i]) for i in range(n))/(n*2.0)
+
+def make_scene(topic: str, scene: dict, index: int, output: Path, duration: float | None = None, used_video_ids: set | None = None, blocked_video_ids: set | None = None, used_hashes: set | None = None, blocked_hashes: set | None = None, used_visual_fingerprints: list | None = None):
     if not PEXELS_API_KEY:
         raise RuntimeError("PEXELS_API_KEY is missing. Add your Pexels API key to GitHub Actions secrets.")
     used_video_ids = used_video_ids if used_video_ids is not None else set()
     blocked_video_ids = blocked_video_ids if blocked_video_ids is not None else set()
     used_hashes = used_hashes if used_hashes is not None else set()
     blocked_hashes = blocked_hashes if blocked_hashes is not None else set()
+    used_visual_fingerprints = used_visual_fingerprints if used_visual_fingerprints is not None else []
 
     query = _query(topic, scene)
     headers = {"Authorization": PEXELS_API_KEY}
@@ -221,10 +253,18 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
             source.unlink(missing_ok=True)
             continue
 
+        fingerprint=_visual_fingerprint(source)
+        if fingerprint and any(_fingerprint_distance(fingerprint, old_fp) < 0.055 for old_fp in used_visual_fingerprints):
+            print(f"[pexels] rejected visually duplicate clip: id={candidate_id}")
+            source.unlink(missing_ok=True)
+            continue
+
         video = candidate
         source_sha256 = candidate_hash
         used_video_ids.add(candidate_id)
         used_hashes.add(candidate_hash)
+        if fingerprint:
+            used_visual_fingerprints.append(fingerprint)
         print(f"[pexels] selected new clip: id={candidate_id} sha256={candidate_hash[:12]}")
         break
 
