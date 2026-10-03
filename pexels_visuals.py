@@ -21,7 +21,7 @@ def _query_variants(topic: str, scene: dict) -> list[str]:
     if isinstance(explicit, str):
         explicit = [explicit]
     if explicit:
-        usable=[re.sub(r"\\s+", " ", str(x)).strip() for x in explicit if str(x).strip()]
+        usable=[re.sub(r"\s+", " ", str(x)).strip() for x in explicit if str(x).strip()]
         if usable:
             return usable[:3]
     topic_l = topic.lower()
@@ -48,7 +48,7 @@ def _query_variants(topic: str, scene: dict) -> list[str]:
     useful = [w for w in words if w not in stop and len(w) > 2]
     # A concrete topic is safer than boilerplate prompt words.
     if topic.strip():
-        return [re.sub(r"\\s+", " ", topic).strip()[:120]]
+        return [re.sub(r"\s+", " ", topic).strip()[:120]]
     base = " ".join(useful[:7])
     return [base or "funny animal moment"]
 
