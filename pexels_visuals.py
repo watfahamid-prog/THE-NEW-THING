@@ -13,7 +13,7 @@ from config import PEXELS_API_KEY, VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_SCENE_SECOND
 
 API = "https://api.pexels.com/v1/videos/search"
 
-def _query(topic: str, scene: dict) -> str:
+def _query_variants(topic: str, scene: dict) -> list[str]:
     # Gemini can provide short, concrete stock-footage searches for each scene.
     # Prefer those over the prose prompt; this prevents generic words such as
     # "realistic vertical stock video" from becoming the search query.
@@ -23,25 +23,24 @@ def _query(topic: str, scene: dict) -> str:
     if explicit:
         usable=[re.sub(r"\\s+", " ", str(x)).strip() for x in explicit if str(x).strip()]
         if usable:
-            scene_index=int(scene.get("scene_index",1) or 1)
-            return usable[(scene_index-1) % len(usable)][:120]
+            return usable[:3]
     topic_l = topic.lower()
     # Ranking topics need footage of the actual subject, not generic stock
     # clips. Parkour/freerunning gets a deliberately concrete search.
     if any(x in topic_l for x in ("parkour", "freerun", "free running")):
-        return "parkour freerunning jump vault"
+        return ["parkour freerunning jump vault","parkour street jump","freerunner vault obstacle"]
     if any(x in topic_l for x in ("skateboard", "skateboarding")):
-        return "skateboarding trick"
+        return ["skateboarding trick","skateboard street trick","skateboard jump landing"]
     if any(x in topic_l for x in ("football", "soccer")):
-        return "soccer football skill"
+        return ["soccer football skill","football freestyle trick","soccer dribbling action"]
     if any(x in topic_l for x in ("basketball",)):
-        return "basketball dunk trick"
+        return ["basketball dunk trick","basketball crossover move","basketball trick shot"]
     if any(x in topic_l for x in ("surf", "surfing")):
-        return "surfing wave"
+        return ["surfing wave","surfer barrel","surfing trick"]
     if any(x in topic_l for x in ("snowboard",)):
-        return "snowboarding trick"
+        return ["snowboarding trick","snowboard jump","snowboard rail trick"]
     if any(x in topic_l for x in ("bmx",)):
-        return "BMX trick jump"
+        return ["BMX trick jump","BMX street trick","BMX jump landing"]
 
     prompt = str(scene.get("prompt", ""))
     words = re.findall(r"[A-Za-z0-9]+", prompt.lower())
@@ -51,7 +50,7 @@ def _query(topic: str, scene: dict) -> str:
     if topic.strip():
         return re.sub(r"\\s+", " ", topic).strip()[:120]
     base = " ".join(useful[:7])
-    return base or "funny animal moment"
+    return [base or "funny animal moment"]
 
 def _download(url: str, path: Path):
     # Pexels CDN connections can occasionally reset on GitHub-hosted runners.
@@ -76,8 +75,8 @@ def _download(url: str, path: Path):
             last_error = exc
             path.unlink(missing_ok=True)
             if attempt < 4:
-                import time
-                time.sleep(2 * (attempt + 1))
+                    import time
+                    time.sleep(2 * (attempt + 1))
     raise RuntimeError(f"Failed to download Pexels video after 5 attempts: {last_error}")
 
 def load_persistent_history() -> dict:
@@ -139,36 +138,43 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
     blocked_hashes = blocked_hashes if blocked_hashes is not None else set()
     used_visual_fingerprints = used_visual_fingerprints if used_visual_fingerprints is not None else []
 
-    query = _query(topic, scene)
+    queries = _query_variants(topic, scene)
+    query = queries[0]
     headers = {"Authorization": PEXELS_API_KEY}
     landscape = scene.get("aspect") == "landscape"
     target_w = 1920 if landscape else VIDEO_WIDTH
     target_h = 1080 if landscape else VIDEO_HEIGHT
     orientation = "landscape" if landscape else "portrait"
-    params = {"query": query, "orientation": orientation, "size": "medium", "per_page": 80}
     videos = []
-    for page in (1, 2):
-        page_params=dict(params, page=page)
-        r = requests.get(API, headers=headers, params=page_params, timeout=30)
-        if r.status_code >= 500:
+    seen_api_ids=set()
+    for query_variant in queries[:3]:
+        params = {"query": query_variant, "orientation": orientation, "size": "medium", "per_page": 80}
+        for page in (1, 2):
+            page_params=dict(params, page=page)
+            r = requests.get(API, headers=headers, params=page_params, timeout=30)
+            if r.status_code >= 500:
             # Retry the SAME semantic query/page. Never substitute unrelated footage.
-            recovered=False
-            for attempt in range(3):
+                recovered=False
+                for attempt in range(3):
                 import time
                 time.sleep(2 * (attempt + 1))
-                rr=requests.get(API, headers=headers, params=page_params, timeout=30)
-                if rr.ok:
-                    page_videos=rr.json().get("videos", [])
-                    videos.extend(page_videos)
-                    recovered=True
-                    break
+                    rr=requests.get(API, headers=headers, params=page_params, timeout=30)
+                    if rr.ok:
+                        page_videos=rr.json().get("videos", [])
+                        for v in page_videos:
+                            if str(v.get("id","")) not in seen_api_ids:
+                                videos.append(v); seen_api_ids.add(str(v.get("id","")))
+                        recovered=True
+                        break
             if not recovered:
                 continue
-        else:
-            r.raise_for_status()
-            videos.extend(r.json().get("videos", []))
+            else:
+                r.raise_for_status()
+                for v in r.json().get("videos", []):
+                    if str(v.get("id","")) not in seen_api_ids:
+                        videos.append(v); seen_api_ids.add(str(v.get("id","")))
     if not videos:
-        raise RuntimeError(f"No Pexels video found for query: {query}")
+        raise RuntimeError(f"No Pexels video found for queries: {queries}")
 
     # Never reuse a Pexels source video inside this video OR across previous
     # runs. Hashing the downloaded MP4 catches the same file even if its URL
@@ -194,7 +200,7 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
     # ranking with a blind shuffle. Prefer candidates whose Pexels URL slug
     # also contains concrete query terms, then add a small amount of
     # randomness among the strongest matches for variety.
-    query_terms = [x for x in re.findall(r"[a-z0-9]+", query.lower()) if len(x) > 2]
+    query_terms = [x for q in queries for x in re.findall(r"[a-z0-9]+", q.lower()) if len(x) > 2]
     generic = {"video","stock","footage","people","person","man","woman","action","scene","realistic","vertical","landscape","portrait","clip"}
     core_terms = [x for x in query_terms if x not in generic]
 
@@ -306,6 +312,7 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
         "pexels_url": video.get("url"),
         "pexels_sha256": source_sha256,
         "search_query": query,
+        "search_queries": queries,
         "search_terms": core_terms,
         "credit": "Footage provided by Pexels"
     }
