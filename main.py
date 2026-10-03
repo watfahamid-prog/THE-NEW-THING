@@ -78,6 +78,7 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
         path=scenes_dir/f"scene_{index:02d}.mp4"
         print(f"[pipeline] rendering scene {index}/{len(storyboard['scenes'])}: {scene.get('purpose','')} ({scene['duration']}s)")
         meta=generate_scene(scene["prompt"],path,topic=topic,scene=scene,index=index,duration=scene["duration"],used_video_ids=used_video_ids,blocked_video_ids=persistent_video_ids,used_hashes=used_hashes,blocked_hashes=persistent_hashes,used_visual_fingerprints=used_visual_fingerprints)
+        meta["pexels_id"]=meta.get("pexels_video_id")
         scene_paths.append(path); scene_meta.append({**scene,**meta})
 
     raw=root/"assembled.mp4"
