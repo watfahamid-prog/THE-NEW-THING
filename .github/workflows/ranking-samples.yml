@@ -8,6 +8,9 @@ on:
       - "render.py"
       - "audio.py"
       - "main.py"
+      - "pexels_visuals.py"
+      - "ai_video.py"
+      - "captions.py"
   workflow_dispatch:
 
 concurrency:
