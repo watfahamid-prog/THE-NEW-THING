@@ -70,14 +70,14 @@ def build(topic:str, selected_trend=None, hook_override=None, hook_variants=None
     history=load_persistent_history()
     persistent_video_ids=set(history.get("video_ids",[]))
     persistent_hashes=set(history.get("sha256",[]))
-    used_video_ids=set(); used_hashes=set()
+    used_video_ids=set(); used_hashes=set(); used_visual_fingerprints=[]
     print(f"[pipeline] persistent Pexels history: {len(persistent_video_ids)} IDs + {len(persistent_hashes)} hashes blocked")
     for index,scene in enumerate(storyboard["scenes"],1):
         scene=dict(scene); scene["duration"]=round(per_scene,3)
         scene["aspect"]="landscape" if storyboard.get("format") in ("longform","tierlist") else "vertical"
         path=scenes_dir/f"scene_{index:02d}.mp4"
         print(f"[pipeline] rendering scene {index}/{len(storyboard['scenes'])}: {scene.get('purpose','')} ({scene['duration']}s)")
-        meta=generate_scene(scene["prompt"],path,topic=topic,scene=scene,index=index,duration=scene["duration"],used_video_ids=used_video_ids,blocked_video_ids=persistent_video_ids,used_hashes=used_hashes,blocked_hashes=persistent_hashes)
+        meta=generate_scene(scene["prompt"],path,topic=topic,scene=scene,index=index,duration=scene["duration"],used_video_ids=used_video_ids,blocked_video_ids=persistent_video_ids,used_hashes=used_hashes,blocked_hashes=persistent_hashes,used_visual_fingerprints=used_visual_fingerprints)
         scene_paths.append(path); scene_meta.append({**scene,**meta})
 
     raw=root/"assembled.mp4"
