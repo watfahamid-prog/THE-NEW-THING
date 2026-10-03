@@ -269,8 +269,8 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
             continue
 
         fingerprint=_visual_fingerprint(source,target_w,target_h)
-        if fingerprint and any(_fingerprint_distance(fingerprint, old_fp) < 0.300 for old_fp in used_visual_fingerprints):
-            print(f"[pexels] rejected visually duplicate clip: id={candidate_id} distance<0.300")
+        if fingerprint and any(_fingerprint_distance(fingerprint, old_fp) < 0.180 for old_fp in used_visual_fingerprints):
+            print(f"[pexels] rejected visually duplicate clip: id={candidate_id} distance<0.180")
             source.unlink(missing_ok=True)
             continue
 
