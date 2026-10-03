@@ -36,7 +36,7 @@ def fallback(topic: str, hook_override: str | None = None) -> dict[str, Any]:
     ranking=is_ranking_topic(topic)
     m=re.search(r"\btop\s*(\d+)\b", topic.lower())
     count=max(5,min(int(m.group(1)),10)) if m else 5
-    spoken_topic=re.sub(r"^top\\s*\\d+\\s*", "", topic, flags=re.I).strip(" :-")
+    spoken_topic=re.sub(r"^top\s*\d+\s*", "", topic, flags=re.I).strip(" :-")
     hook=hook_override or (f"Here are {count} {spoken_topic} — and the final one is wild." if ranking else f"You probably don't know this about {topic}.")
     if ranking:
         names=[
