@@ -328,7 +328,7 @@ def create_storyboard(topic: str, hook_override: str | None = None, longform: bo
     if not GEMINI_API_KEY:
         return fallback(topic, hook_override)
     ranking=is_ranking_topic(topic)
-    m=re.search(r"\\btop\\s*(\\d+)\\b", topic.lower())
+    m=re.search(r"\btop\s*(\d+)\b", topic.lower())
     count=max(5,min(int(m.group(1)),10)) if m else 5
     prompt=f"""Topic: {topic}
 Preferred hook: {hook_override or "create the strongest curiosity hook yourself"}
