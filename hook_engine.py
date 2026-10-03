@@ -10,8 +10,12 @@ PATTERNS = [
 ]
 
 def variants(topic: str, base_hook: str = "") -> list[str]:
+    spoken_topic=re.sub(r"^top\s*(?:5|6|10)\s*[:\-]?\s*", "", topic, flags=re.I).strip()
     hooks=[base_hook.strip()] if base_hook.strip() else []
-    hooks.extend(p.format(topic=topic) for p in PATTERNS)
+    hooks.extend(p.format(topic=spoken_topic) for p in PATTERNS)
+    if re.match(r"^top\s*(?:5|6|10)\b", topic, re.I):
+        count=re.search(r"^top\s*(5|6|10)\b", topic, re.I).group(1)
+        hooks.append(f"Here are the {count} {spoken_topic} you need to see — and the last one is wild.")
     out=[]
     seen=set()
     for h in hooks:
