@@ -98,21 +98,21 @@ def save_persistent_history(history: dict) -> None:
     }, indent=2), encoding="utf-8")
 
 def _visual_fingerprint(path: Path, target_w: int = VIDEO_WIDTH, target_h: int = VIDEO_HEIGHT) -> list[float]:
-    """Fingerprint footage after the SAME vertical crop used in the final video.
-    Comparing raw source frames missed clips that became nearly identical after
-    the 9:16 crop."""
+    """Fingerprint several frames after the final 9:16 crop.
+    Using 6 frames avoids missing short clips and catches near-identical stock shots."""
     try:
         vf=(
             f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,"
-            f"crop={target_w}:{target_h},scale=16:16,format=gray"
+            f"crop={target_w}:{target_h},scale=24:24,format=gray"
         )
         raw=subprocess.check_output([
             "ffmpeg","-hide_banner","-loglevel","error","-i",str(path),
-            "-vf",vf,"-frames:v","5","-f","rawvideo","pipe:1"
+            "-vf",vf,"-r","2","-frames:v","6","-f","rawvideo","pipe:1"
         ],timeout=25)
-    except Exception:
+    except Exception as exc:
+        print(f"[pexels] visual fingerprint unavailable: {exc}")
         return []
-    frame_size=16*16
+    frame_size=24*24
     frames=[]
     for i in range(0,len(raw)-frame_size+1,frame_size):
         frame=raw[i:i+frame_size]
@@ -146,24 +146,27 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
     target_h = 1080 if landscape else VIDEO_HEIGHT
     orientation = "landscape" if landscape else "portrait"
     params = {"query": query, "orientation": orientation, "size": "medium", "per_page": 80}
-    r = requests.get(API, headers=headers, params=params, timeout=30)
-    if r.status_code >= 500:
-        videos = []
-        # Retry the SAME semantic query. Never substitute unrelated footage.
-        for attempt in range(3):
-            retry_params = dict(params)
-            rr = requests.get(API, headers=headers, params=retry_params, timeout=30)
-            if rr.ok:
-                videos = rr.json().get("videos", [])
-                if videos:
+    videos = []
+    for page in (1, 2):
+        page_params=dict(params, page=page)
+        r = requests.get(API, headers=headers, params=page_params, timeout=30)
+        if r.status_code >= 500:
+            # Retry the SAME semantic query/page. Never substitute unrelated footage.
+            recovered=False
+            for attempt in range(3):
+                import time
+                time.sleep(2 * (attempt + 1))
+                rr=requests.get(API, headers=headers, params=page_params, timeout=30)
+                if rr.ok:
+                    page_videos=rr.json().get("videos", [])
+                    videos.extend(page_videos)
+                    recovered=True
                     break
-            import time
-            time.sleep(2 * (attempt + 1))
-        if not videos:
-            raise RuntimeError(f"Pexels search failed for query: {query} (HTTP {r.status_code})")
-    else:
-        r.raise_for_status()
-        videos = r.json().get("videos", [])
+            if not recovered:
+                continue
+        else:
+            r.raise_for_status()
+            videos.extend(r.json().get("videos", []))
     if not videos:
         raise RuntimeError(f"No Pexels video found for query: {query}")
 
@@ -257,7 +260,7 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
             continue
 
         fingerprint=_visual_fingerprint(source,target_w,target_h)
-        if fingerprint and any(_fingerprint_distance(fingerprint, old_fp) < 0.070 for old_fp in used_visual_fingerprints):
+        if fingerprint and any(_fingerprint_distance(fingerprint, old_fp) < 0.090 for old_fp in used_visual_fingerprints):
             print(f"[pexels] rejected visually duplicate clip: id={candidate_id}")
             source.unlink(missing_ok=True)
             continue
@@ -268,7 +271,7 @@ def make_scene(topic: str, scene: dict, index: int, output: Path, duration: floa
         used_hashes.add(candidate_hash)
         if fingerprint:
             used_visual_fingerprints.append(fingerprint)
-        print(f"[pexels] selected new clip: id={candidate_id} sha256={candidate_hash[:12]}")
+        print(f"[pexels] selected new clip: id={candidate_id} sha256={candidate_hash[:12]} fingerprint_frames={len(fingerprint)//576 if fingerprint else 0}")
         break
 
     if video is None:
