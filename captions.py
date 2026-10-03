@@ -14,7 +14,7 @@ def make_srt(text:str,audio:Path,output:Path):
     words=re.findall(r"\S+",text.strip())
     if not words:
         raise ValueError("Cannot create captions: narration text is empty.")
-    chunks=[words[i:i+5] for i in range(0,len(words),5)]
+    chunks=[words[i:i+4] for i in range(0,len(words),4)]
     total=duration(audio); slot=total/len(chunks)
     lines=[]
     for i,chunk in enumerate(chunks):
@@ -29,7 +29,7 @@ def burn_captions(video:Path,srt:Path,output:Path):
 
     # libass resolves subtitle files more reliably from an absolute path.
     subtitle=srt.resolve().as_posix().replace("\\","\\\\").replace("'", "\'")
-    vf=f"subtitles='{subtitle}':force_style='FontName=DejaVu Sans,FontSize=18,Bold=1,Outline=2,Shadow=1,Alignment=2,MarginV=115'"
+    vf=f"subtitles='{subtitle}':force_style='FontName=DejaVu Sans,FontSize=16,Bold=1,Outline=1,Shadow=1,Alignment=2,MarginV=90'"
 
     print(f"[captions] burning subtitles from {srt.resolve()}...",flush=True)
     subprocess.run([
