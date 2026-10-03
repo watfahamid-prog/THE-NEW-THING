@@ -44,27 +44,39 @@ def fallback(topic: str, hook_override: str | None = None) -> dict[str, Any]:
         # Never hard-code a different activity into a ranking fallback.
         # The fallback must stay faithful to the actual topic.
         t=topic.lower()
-        if "dog" in t:
-            queries=["funny dog reaction","dog surprised reaction","dog funny fail","dog playing funny","dog running funny"]
-            names=["The Warm-Up Reaction","The Surprise Face","The Funny Fail","The Perfect Reaction","The Best One"]
-            reactions=["It starts innocent, then that reaction gives it away.","That face changed so fast, you can’t fake that.","The timing here is way too perfect.","You can actually see the confusion hit in real time.","Okay, that one absolutely earned the top spot."]
-        elif "cat" in t:
-            queries=["funny cat reaction","cat surprised reaction","cat funny fail","cat jumping funny","cat curious reaction"]
-            names=["The Side-Eye","The Surprise","The Failed Jump","The Instant Regret","The Perfect Reaction"]
-            reactions=["That cat saw the situation and immediately reconsidered.","The face says everything before anything even happens.","That jump had a very different ending in mind.","The confidence disappeared in about one second.","That reaction is impossible to beat."]
+        if "cat" in t:
+            queries=["funny cat side eye","cat surprised reaction","cat failed jump","cat chasing toy","cat instant regret","cat funny stare","cat knocking object over","cat hiding reaction","cat curious closeup","cat playful fail"]
+            names=["The Side-Eye","The Surprise","The Failed Jump","The Toy Chase","The Instant Regret","The Funny Stare","The Knock-Over","The Hideaway","The Curious Look","The Playful Fail"]
+            reactions=["That cat saw the situation and immediately reconsidered.","The face says everything before anything even happens.","That jump had a very different ending in mind.","The chase gets funnier every second.","The confidence disappeared in about one second.","That stare is doing all the comedy by itself.","The timing on that is ridiculously clean.","The reaction is somehow even better than the setup.","You can see the curiosity take over instantly.","That ending is exactly why it belongs here."]
+        elif "dog" in t:
+            queries=["funny dog reaction","dog surprised reaction","dog failed jump","dog playing fetch funny","dog running funny","dog stealing food funny","dog confused reaction","dog chasing toy","dog excited greeting","dog playful fail"]
+            names=["The Reaction","The Surprise","The Failed Jump","The Fetch Fail","The Funny Run","The Food Heist","The Confused Look","The Toy Chase","The Excited Greeting","The Playful Fail"]
+            reactions=["That reaction gives the whole moment away.","That face changed in an instant.","The jump had a completely different ending planned.","The timing makes this one work.","That run is pure chaos.","The confidence in that move is unbelievable.","You can actually watch the confusion happen.","The chase keeps getting better.","That greeting is impossible not to notice.","The ending is what makes it memorable."]
         elif "animal" in t or "animals" in t:
-            queries=["funny animal reaction","animal surprised reaction","animal funny fail","animal playing funny","animal unexpected behavior"]
-            names=["The Surprise","The Reaction","The Fail","The Perfect Timing","The Wildest Moment"]
-            reactions=["That reaction came completely out of nowhere.","The expression makes the whole moment.","That did not go remotely as planned.","The timing makes this one ridiculously watchable.","That is exactly the kind of moment you remember."]
-        elif any(x in t for x in ("football","soccer","basketball","sports","sport")):
-            queries=[f"{topic} funny moment",f"{topic} surprising reaction",f"{topic} skill fail",f"{topic} unexpected moment",f"{topic} best moment"]
-            names=["The Funny Moment","The Reaction","The Fail","The Surprise","The Best Moment"]
-            reactions=["The timing on that is absolutely ridiculous.","That reaction tells the whole story.","You can see the mistake coming way too late.","That moment changed direction instantly.","That is exactly why this one stands out."]
+            queries=["funny animal reaction","animal surprised reaction","animal playful fail","animal running funny","animal chasing toy","animal curious behavior","animal unexpected jump","animal eating funny","animal interaction funny","animal unusual behavior"]
+            names=["The Reaction","The Surprise","The Playful Fail","The Wild Run","The Chase","The Curious Look","The Unexpected Jump","The Funny Meal","The Interaction","The Weirdest Move"]
+            reactions=["That reaction came completely out of nowhere.","The expression makes the whole moment.","That did not go remotely as planned.","The movement is impossible to ignore.","The chase has perfect timing.","You can see the curiosity build.","That jump changes everything instantly.","The timing makes this one ridiculously watchable.","The interaction is what makes it memorable.","That is exactly the kind of moment you remember."]
+        elif any(x in t for x in ("football","soccer")):
+            queries=["football freestyle footwork","soccer nutmeg skill","football juggling trick","soccer dribbling skill","football freestyle combo","soccer trick shot","football ball control","soccer rainbow flick","football stepover skill","soccer skill challenge"]
+            names=["Lightning Footwork","The Nutmeg","The Juggling Sequence","The Dribble","The Skill Combo","The Trick Shot","Perfect Ball Control","The Rainbow Flick","The Stepover","The Skill Challenge"]
+            reactions=["The footwork is ridiculously quick.","That nutmeg comes out of nowhere.","The control here is seriously clean.","That dribble has no wasted movement.","The combination gets better with every touch.","The finish is what makes this one stand out.","That ball control is almost too clean.","The timing on that flick is perfect.","That stepover creates just enough space.","The final move is the payoff."]
+        elif "basketball" in t:
+            queries=["basketball trick shot","basketball dunk","basketball crossover move","basketball dribbling skill","basketball behind back move","basketball street trick","basketball spin move","basketball long shot","basketball handles closeup","basketball creative shot"]
+            names=["The Trick Shot","The Dunk","The Crossover","The Handles","The Behind-the-Back","The Street Move","The Spin","The Long Shot","The Handles Closeup","The Creative Finish"]
+            reactions=["The accuracy on that is ridiculous.","That finish has serious hang time.","The crossover happens way too fast.","Those handles are unbelievably clean.","That move creates space instantly.","The creativity makes this one stand out.","The spin is perfectly timed.","That shot is much harder than it looks.","The control is what sells it.","The finish is the perfect payoff."]
+        elif any(x in t for x in ("satisfying","satisfy","oddly satisfying")):
+            queries=["paint mixing satisfying","kinetic sand cutting satisfying","ice cream swirl satisfying","pressure washing clean satisfying","soap cutting satisfying","wood sanding smooth","metal polishing satisfying","cake icing smooth satisfying","liquid art swirl satisfying","perfectly aligned objects satisfying"]
+            names=["Perfect Paint Mix","Clean Sand Cut","The Ice Cream Swirl","The Deep Clean","The Soap Slice","Smooth Sanding","Mirror Polish","Perfect Icing","Liquid Swirl","Perfect Alignment"]
+            reactions=["The colors blend almost perfectly.","That cut is ridiculously clean.","The swirl is exactly what you want to see.","Watching that surface turn clean is so satisfying.","That slice is almost too perfect.","The finish gets smoother with every pass.","The shine at the end is the payoff.","That icing goes down unbelievably smoothly.","The movement is hypnotically clean.","Every piece lands exactly where it should."]
+        elif any(x in t for x in ("machine","process","factory","mechanical")):
+            queries=["precision machine process","satisfying machine movement","factory conveyor process","robotic arm precision","industrial cutting machine","metal machining closeup","packaging machine process","automated factory line","mechanical assembly closeup","precision manufacturing"]
+            names=["Precision Movement","Machine Rhythm","The Conveyor","Robot Precision","The Clean Cut","Metal Finish","Perfect Packaging","Factory Flow","Assembly Line","Manufacturing Precision"]
+            reactions=["Every movement is perfectly controlled.","The rhythm is what makes this satisfying.","The timing on that conveyor is flawless.","That robotic movement is incredibly precise.","The cut happens with almost no wasted motion.","The finish is unbelievably clean.","That packaging sequence is perfectly timed.","Everything moves together like clockwork.","The assembly is almost hypnotic.","That final pass is the payoff."]
         else:
             base=re.sub(r"\s+"," ",topic).strip()
-            queries=[f"{base} funny moment",f"{base} surprising reaction",f"{base} unexpected moment",f"{base} caught on camera",f"{base} best moment"]
-            names=["The Opening Moment","The Reaction","The Unexpected Turn","The Big Moment","The Standout"]
-            reactions=["The opening looks normal, then everything changes.","That reaction is what makes this moment work.","The unexpected turn is what you remember.","You can see the whole moment develop in seconds.","That one has the strongest payoff."]
+            queries=[f"{base} closeup action",f"{base} fast movement",f"{base} skill demonstration",f"{base} unexpected moment",f"{base} reaction",f"{base} creative action",f"{base} closeup detail",f"{base} impressive movement",f"{base} real life action",f"{base} best action"]
+            names=["The Opening","The Fast Move","The Skill","The Surprise","The Reaction","The Creative Move","The Detail","The Impressive Move","The Real Moment","The Final Payoff"]
+            reactions=["The opening grabs you immediately.","The speed makes this one stand out.","The skill is what makes it interesting.","That surprise changes the whole moment.","The reaction sells it.","The creative move is the payoff.","The detail is easy to miss but worth watching.","That movement is seriously impressive.","The real-life moment feels completely natural.","That final payoff earns the top spot."]
         while len(names)<count:
             names.append(f"Standout Moment {len(names)+1}")
         while len(queries)<count:
@@ -78,8 +90,9 @@ def fallback(topic: str, hook_override: str | None = None) -> dict[str, Any]:
         scenes=[]
         for pos,playback_rank in enumerate(range(count,0,-1)):
             entry=next(x for x in rank_entries if x["rank"]==playback_rank)
-            q=queries[count-1-playback_rank+1]
-            reaction=reactions[count-1-playback_rank+1]
+            idx=playback_rank-1
+            q=queries[idx]
+            reaction=reactions[idx]
             scenes.append({
                 "duration":5,
                 "purpose":f"rank {playback_rank}",
