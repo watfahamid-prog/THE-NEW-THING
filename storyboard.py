@@ -22,14 +22,14 @@ def is_ranking_topic(topic: str) -> bool:
     return any(x in t for x in ("top ", "top 5", "top 10", "ranking", "ranked", "funniest", "funny moments", "best moments", "worst moments", "countdown")) and not is_tier_topic(topic)
 
 def _ranking_topic_core(topic: str) -> str:
-    t=re.sub(r"\\s+"," ",str(topic)).strip()
-    t=re.sub(r"^top\\s*\\d+\\s*[:\\-]?\\s*","",t,flags=re.I)
+    t=re.sub(r"\s+"," ",str(topic)).strip()
+    t=re.sub(r"^top\s*\d+\s*[:\-]?\s*","",t,flags=re.I)
     # Strip common editorial framing so stock search focuses on the actual subject.
-    t=re.sub(r"^what it actually looks like inside\\s+","",t,flags=re.I)
-    t=re.sub(r"^what it looks like inside\\s+","",t,flags=re.I)
-    t=re.sub(r"^the world's?\\s+","",t,flags=re.I)
-    t=re.sub(r"\\b(top|funniest|craziest|best|most|worst|satisfying)\\b","",t,flags=re.I)
-    t=re.sub(r"\\s+"," ",t).strip(" :-")
+    t=re.sub(r"^what it actually looks like inside\s+","",t,flags=re.I)
+    t=re.sub(r"^what it looks like inside\s+","",t,flags=re.I)
+    t=re.sub(r"^the world's?\s+","",t,flags=re.I)
+    t=re.sub(r"\b(top|funniest|craziest|best|most|worst|satisfying)\b","",t,flags=re.I)
+    t=re.sub(r"\s+"," ",t).strip(" :-")
     return t or str(topic).strip()
 
 def fallback(topic: str, hook_override: str | None = None) -> dict[str, Any]:
@@ -398,7 +398,7 @@ Return JSON keys: title, hook, script, format, ranking_entries, scenes."""
             # A ranking needs a different concrete action/subject for every rank.
             generic_phrases=("funny moment","best moment","surprising reaction","unexpected moment","caught on camera","standout moment","variation")
             generic_query_count=0
-            topic_lower=re.sub(r"\\s+"," ",topic.lower()).strip()
+            topic_lower=re.sub(r"\s+"," ",topic.lower()).strip()
             for sc in normalized:
                 q=" ".join(str(x) for x in (sc.get("visual_search_queries") or [])).lower()
                 if any(p in q for p in generic_phrases) or (topic_lower and topic_lower in q):
