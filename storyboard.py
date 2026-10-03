@@ -21,6 +21,17 @@ def is_ranking_topic(topic: str) -> bool:
     t=topic.lower()
     return any(x in t for x in ("top ", "top 5", "top 10", "ranking", "ranked", "funniest", "funny moments", "best moments", "worst moments", "countdown")) and not is_tier_topic(topic)
 
+def _ranking_topic_core(topic: str) -> str:
+    t=re.sub(r"\\s+"," ",str(topic)).strip()
+    t=re.sub(r"^top\\s*\\d+\\s*[:\\-]?\\s*","",t,flags=re.I)
+    # Strip common editorial framing so stock search focuses on the actual subject.
+    t=re.sub(r"^what it actually looks like inside\\s+","",t,flags=re.I)
+    t=re.sub(r"^what it looks like inside\\s+","",t,flags=re.I)
+    t=re.sub(r"^the world's?\\s+","",t,flags=re.I)
+    t=re.sub(r"\\b(top|funniest|craziest|best|most|worst|satisfying)\\b","",t,flags=re.I)
+    t=re.sub(r"\\s+"," ",t).strip(" :-")
+    return t or str(topic).strip()
+
 def fallback(topic: str, hook_override: str | None = None) -> dict[str, Any]:
     ranking=is_ranking_topic(topic)
     m=re.search(r"\btop\s*(\d+)\b", topic.lower())
@@ -68,13 +79,39 @@ def fallback(topic: str, hook_override: str | None = None) -> dict[str, Any]:
             queries=["paint mixing satisfying","kinetic sand cutting satisfying","ice cream swirl satisfying","pressure washing clean satisfying","soap cutting satisfying","wood sanding smooth","metal polishing satisfying","cake icing smooth satisfying","liquid art swirl satisfying","perfectly aligned objects satisfying"]
             names=["Perfect Paint Mix","Clean Sand Cut","The Ice Cream Swirl","The Deep Clean","The Soap Slice","Smooth Sanding","Mirror Polish","Perfect Icing","Liquid Swirl","Perfect Alignment"]
             reactions=["The colors blend almost perfectly.","That cut is ridiculously clean.","The swirl is exactly what you want to see.","Watching that surface turn clean is so satisfying.","That slice is almost too perfect.","The finish gets smoother with every pass.","The shine at the end is the payoff.","That icing goes down unbelievably smoothly.","The movement is hypnotically clean.","Every piece lands exactly where it should."]
+        elif "elevator" in t and ("shaft" in t or "deep" in t or "underground" in t):
+            queries=[
+                "deep elevator shaft interior",
+                "elevator shaft descending",
+                "underground elevator cage",
+                "deep mine elevator shaft",
+                "elevator shaft from above",
+                "industrial elevator shaft machinery",
+                "elevator counterweight shaft",
+                "deep underground lift",
+                "elevator doors opening inside shaft",
+                "elevator inspection shaft",
+            ]
+            names=["The Deep Shaft","The Descent","The Underground Cage","The Mine Lift","The Shaft View","The Machinery","The Counterweight","The Deep Lift","The Opening","The Inspection"]
+            reactions=[
+                "The depth is what makes this one immediately unsettling.",
+                "Watching the descent gives you a real sense of scale.",
+                "That cage makes the depth feel even more extreme.",
+                "This is where the shaft stops looking like a normal elevator.",
+                "The view shows just how far down the shaft goes.",
+                "The machinery is what makes the whole system work.",
+                "That hidden mechanism is easy to miss.",
+                "The deeper it goes, the stranger the scale becomes.",
+                "The opening gives you the clearest look inside.",
+                "This close-up reveals what you normally never see.",
+            ]
         elif any(x in t for x in ("machine","process","factory","mechanical")):
             queries=["precision machine process","satisfying machine movement","factory conveyor process","robotic arm precision","industrial cutting machine","metal machining closeup","packaging machine process","automated factory line","mechanical assembly closeup","precision manufacturing"]
             names=["Precision Movement","Machine Rhythm","The Conveyor","Robot Precision","The Clean Cut","Metal Finish","Perfect Packaging","Factory Flow","Assembly Line","Manufacturing Precision"]
             reactions=["Every movement is perfectly controlled.","The rhythm is what makes this satisfying.","The timing on that conveyor is flawless.","That robotic movement is incredibly precise.","The cut happens with almost no wasted motion.","The finish is unbelievably clean.","That packaging sequence is perfectly timed.","Everything moves together like clockwork.","The assembly is almost hypnotic.","That final pass is the payoff."]
         else:
-            base=re.sub(r"\s+"," ",topic).strip()
-            queries=[f"{base} closeup action",f"{base} fast movement",f"{base} skill demonstration",f"{base} unexpected moment",f"{base} reaction",f"{base} creative action",f"{base} closeup detail",f"{base} impressive movement",f"{base} real life action",f"{base} best action"]
+            base=_ranking_topic_core(topic)
+            queries=[f"{base} closeup",f"{base} action",f"{base} moving",f"{base} real footage",f"{base} interior",f"{base} detail",f"{base} wide view",f"{base} process",f"{base} operation",f"{base} closeup action"]
             names=["The Opening","The Fast Move","The Skill","The Surprise","The Reaction","The Creative Move","The Detail","The Impressive Move","The Real Moment","The Final Payoff"]
             reactions=["The opening grabs you immediately.","The speed makes this one stand out.","The skill is what makes it interesting.","That surprise changes the whole moment.","The reaction sells it.","The creative move is the payoff.","The detail is easy to miss but worth watching.","That movement is seriously impressive.","The real-life moment feels completely natural.","That final payoff earns the top spot."]
         while len(names)<count:
@@ -396,7 +433,7 @@ Return JSON keys: title, hook, script, format, ranking_entries, scenes."""
             result["ranking_count"]=count
             result["format"]="ranking"
             # The renderer depends on a real Top-N title, not a generic topic title.
-            result["title"]=f"Top {count}: {topic}"
+            result["title"]=topic if re.match(r"^top\s*\d+\b", str(topic).strip(), re.I) else f"Top {count}: {topic}"
             return result
         if len(normalized)==VIDEO_SCENES:
             result["scenes"]=normalized
