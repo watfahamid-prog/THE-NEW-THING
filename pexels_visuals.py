@@ -140,6 +140,12 @@ def _visual_fingerprint(path: Path, target_w: int = VIDEO_WIDTH, target_h: int =
     return [x for frame in frames for x in frame]
 
 def _fingerprint_distance(a: list[float], b: list[float]) -> float:
+    if not a or not b:
+        return 1.0
+    n=min(len(a),len(b))
+    if not n:
+        return 1.0
+    return sum(abs(a[i]-b[i]) for i in range(n))/(n*2.0)
 
 def _dhash_frames(path: Path) -> list[list[bool]]:
     """Three-point dHash matching the workflow QC gate."""
@@ -170,12 +176,6 @@ def _dhash_frames(path: Path) -> list[list[bool]]:
 
 def _dhash_distance(a: list[bool], b: list[bool]) -> int:
     return sum(x != y for x,y in zip(a,b))
-    if not a or not b:
-        return 1.0
-    n=min(len(a),len(b))
-    if not n:
-        return 1.0
-    return sum(abs(a[i]-b[i]) for i in range(n))/(n*2.0)
 
 def make_scene(topic: str, scene: dict, index: int, output: Path, duration: float | None = None, used_video_ids: set | None = None, blocked_video_ids: set | None = None, used_hashes: set | None = None, blocked_hashes: set | None = None, used_visual_fingerprints: list | None = None):
     if not PEXELS_API_KEY:
