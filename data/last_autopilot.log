@@ -1,4 +1,4 @@
-ERROR: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=403b64648b834e4590f2d777e1770cb0&Sec-MS-GEC=4720B5089BE23A5B15E15855150ADEC724FEC5B750BEEC5465277277E2F070A0&Sec-MS-GEC-Version=1-143.0.3650.75'
+ERROR: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=1f3e25365c954318b78747d6b3d55a7c&Sec-MS-GEC=FBFFCBF948FFA890C523F8DD81E20C5B9678BD9775CF0F839539BB35C68DEE0D&Sec-MS-GEC-Version=1-143.0.3650.75'
 [topics] Gemini topic generation failed: 503 Server Error: Service Unavailable for url: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent
 [autopilot] YouTube signals: 20
 [autopilot] Gemini topic candidates: 7
@@ -6,11 +6,11 @@ ERROR: 403, message='Invalid response status', url='wss://speech.platform.bing.c
 [autopilot] topic source: safe_fallback
 [config] ELEVENLABS_VOICE_ID not set; audio.py will auto-select a voice from ElevenLabs.
 [pipeline] started: Top 5 animals doing things that look almost human
-Gemini storyboard unavailable (503 Server Error: Service Unavailable for url: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent); using local fallback storyboard.
+Gemini storyboard unavailable (HTTPSConnectionPool(host='generativelanguage.googleapis.com', port=443): Read timed out. (read timeout=90)); using local fallback storyboard.
 [openai] refinement unavailable (429 Client Error: Too Many Requests for url: https://api.openai.com/v1/chat/completions); keeping original storyboard.
 [pipeline] storyboard ready: ranking / 5 scenes
 [tts] ElevenLabs auto-selected voice=CwhRBWXzGAHq8TQ4Fs17 name=Roger - Laid-Back, Casual, Resonant
-[tts] ElevenLabs unavailable (ElevenLabs HTTP 401: {"detail":{"type":"invalid_request","code":"quota_exceeded","message":"This request exceeds your quota of 10000. You have 3 credits remaining, while 118 credits are required for this request. Add credits or upgrade your plan to continue using the API: https://elevenlabs.io/app/subscription/api?utm_source=api_error&utm_content=quota_exceeded","status":"quota_exceeded","request_id":"b19b07f7eb623cff1525f437cbf7c632","docs_url":"https://elevenlabs.io/app/subscription/api?utm_source=api_error&utm_content=quota_exceeded"}}); using neural fallback.
+[tts] ElevenLabs unavailable (ElevenLabs HTTP 401: {"detail":{"type":"invalid_request","code":"quota_exceeded","message":"This request exceeds your quota of 10000. You have 3 credits remaining, while 118 credits are required for this request. Add credits or upgrade your plan to continue using the API: https://elevenlabs.io/app/subscription/api?utm_source=api_error&utm_content=quota_exceeded","status":"quota_exceeded","request_id":"3bf6a15c37d616180ec18d8859b5e522","docs_url":"https://elevenlabs.io/app/subscription/api?utm_source=api_error&utm_content=quota_exceeded"}}); using neural fallback.
 Traceback (most recent call last):
   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/edge_tts/communicate.py", line 588, in stream
     async for message in self.__stream():
@@ -22,7 +22,7 @@ Traceback (most recent call last):
                               ^^^^^^^^^^^^^^^^
   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/aiohttp/client.py", line 1329, in _ws_connect
     raise WSServerHandshakeError(
-aiohttp.client_exceptions.WSServerHandshakeError: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=f15e5870ed144a8c90494e28f2a4610a&Sec-MS-GEC=4720B5089BE23A5B15E15855150ADEC724FEC5B750BEEC5465277277E2F070A0&Sec-MS-GEC-Version=1-143.0.3650.75'
+aiohttp.client_exceptions.WSServerHandshakeError: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=9f7d180c00ce425bb72eb49351394b93&Sec-MS-GEC=FBFFCBF948FFA890C523F8DD81E20C5B9678BD9775CF0F839539BB35C68DEE0D&Sec-MS-GEC-Version=1-143.0.3650.75'
 
 During handling of the above exception, another exception occurred:
 
@@ -60,4 +60,4 @@ Traceback (most recent call last):
                               ^^^^^^^^^^^^^^^^
   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/aiohttp/client.py", line 1329, in _ws_connect
     raise WSServerHandshakeError(
-aiohttp.client_exceptions.WSServerHandshakeError: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=403b64648b834e4590f2d777e1770cb0&Sec-MS-GEC=4720B5089BE23A5B15E15855150ADEC724FEC5B750BEEC5465277277E2F070A0&Sec-MS-GEC-Version=1-143.0.3650.75'
+aiohttp.client_exceptions.WSServerHandshakeError: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=1f3e25365c954318b78747d6b3d55a7c&Sec-MS-GEC=FBFFCBF948FFA890C523F8DD81E20C5B9678BD9775CF0F839539BB35C68DEE0D&Sec-MS-GEC-Version=1-143.0.3650.75'
